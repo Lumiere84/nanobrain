@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}img{max-width:100%}</style>
+<title>NANOBRAIN Time Crystal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: instrument bench. Live resonance chamber on the left, control rack on the right, notes below. */
+:root{
+  --bg:#F3F1F7; --panel:#FFFFFF; --ink:#1D1A2B; --muted:#5F5A74; --line:#DCD7E6;
+  --amber:#C27A0E; --teal:#0F8A8A; --violet:#6A4BC4; --rose:#C23B6B;
+  --good:#1E7F4E; --warn:#A8620A; --bad:#B4323A;
+  --chamber:#FBFAFD; --grid:#E9E5F1;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#121020; --panel:#1B1830; --ink:#ECE9F7; --muted:#A49EBE; --line:#2E2A47;
+  --amber:#F0A93A; --teal:#3CC9C3; --violet:#A08BF2; --rose:#F06A98;
+  --good:#5BC98C; --warn:#F0A93A; --bad:#F07178;
+  --chamber:#0D0B18; --grid:#1E1A33; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#121020; --panel:#1B1830; --ink:#ECE9F7; --muted:#A49EBE; --line:#2E2A47;
+  --amber:#F0A93A; --teal:#3CC9C3; --violet:#A08BF2; --rose:#F06A98;
+  --good:#5BC98C; --warn:#F0A93A; --bad:#F07178;
+  --chamber:#0D0B18; --grid:#1E1A33; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:28px}
+header{display:grid;gap:6px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(40px,7vw,72px);line-height:.95;margin:0;letter-spacing:-.02em}
+h1 span{color:var(--amber)}
+.lede{max-width:64ch;color:var(--muted);margin:4px 0 0;font-size:16px}
+.bench{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:900px){.bench{grid-template-columns:1fr}}
+.chamber{background:var(--chamber);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px;min-width:0}
+.chamber canvas{width:100%;aspect-ratio:1/1;max-width:100%;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;color:var(--muted)}
+.legend b{font-weight:600;color:var(--ink)}
+.sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:baseline}
+.rack{display:grid;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px;min-width:0}
+.card h2{font-family:var(--f-display);font-weight:700;font-size:19px;margin:0;text-wrap:balance}
+.card .hint{font-size:13px;color:var(--muted);margin:-6px 0 0}
+.pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.stage{font-family:var(--f-mono);font-size:11.5px;text-align:center;padding:7px 2px;border-radius:7px;border:1px solid var(--line);color:var(--muted);transition:background .25s,color .25s}
+.stage.on{background:var(--amber);border-color:var(--amber);color:var(--bg);font-weight:500}
+.stage.done{color:var(--ink);border-color:var(--amber)}
+.decision{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.chip{font-family:var(--f-mono);font-size:12px;padding:3px 9px;border-radius:99px;border:1px solid currentColor}
+.chip.good{color:var(--good)} .chip.warn{color:var(--warn)} .chip.bad{color:var(--bad)}
+.decision .big{font-family:var(--f-display);font-weight:700;font-size:24px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+button{font-family:var(--f-body);font-size:14px;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 12px}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+button.primary{background:var(--amber);border-color:var(--amber);color:var(--bg);font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+label{font-size:13.5px;color:var(--muted)}
+.slider{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}
+.slider input{grid-column:1/-1;width:100%;accent-color:var(--amber)}
+.val{font-family:var(--f-mono);font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums}
+.bars{display:grid;gap:8px}
+.bar{display:grid;grid-template-columns:96px 1fr 44px;gap:10px;align-items:center;font-size:13.5px}
+.bar .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{height:10px;background:var(--grid);border-radius:99px;overflow:hidden}
+.fill{height:100%;width:0;background:var(--teal);border-radius:99px}
+.bar.best .fill{background:var(--amber)}
+.bar .pct{font-family:var(--f-mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+.trace{width:100%;height:96px;display:block;max-width:100%}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stat{border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-family:var(--f-mono);font-size:19px;font-variant-numeric:tabular-nums}
+.switch{display:flex;align-items:center;gap:10px}
+.switch input{width:18px;height:18px;accent-color:var(--amber)}
+.notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+@media (max-width:900px){.notes{grid-template-columns:1fr}}
+.notes section{min-width:0}
+.notes h3{font-family:var(--f-display);font-weight:700;font-size:18px;margin:0 0 6px}
+.notes p,.notes li{color:var(--muted);font-size:14.5px;max-width:62ch}
+.notes ol,.notes ul{padding-left:20px;margin:0;display:grid;gap:6px}
+.tag{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:5px;margin-right:6px}
+.tag.real{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good)}
+.tag.spec{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion: reduce){.stage{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Resonance simulation · inspired by Bandyopadhyay's <i>Nanobrain</i></div>
+    <h1>NANO<span>BRAIN</span></h1>
+    <p class="lede">A brain made of clocks inside clocks. A time crystal beats at its core, three rings of prime-rhythm oscillators hold memories as shapes, and every decision is the network resonating into its closest memory. Nothing here follows step-by-step instructions.</p>
+  </header>
+
+  <div class="bench">
+    <div class="chamber">
+      <canvas id="chamber" width="900" height="900" aria-label="Live view of the nested oscillator rings and the time crystal core"></canvas>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--rose)"></i><b>Core</b> time crystal, 8 clocks</span>
+        <span><i class="sw" style="background:var(--amber)"></i><b>Fast ring</b> perception, 12 clocks, rhythm ×5</span>
+        <span><i class="sw" style="background:var(--teal)"></i><b>Middle ring</b> goals, 8 clocks, ×3</span>
+        <span><i class="sw" style="background:var(--violet)"></i><b>Slow ring</b> identity, 6 clocks, ×2</span>
+      </div>
+    </div>
+
+    <div class="rack">
+      <div class="card" aria-live="polite">
+        <h2>What the brain is doing</h2>
+        <div class="pipeline" id="pipeline">
+          <div class="stage" data-s="0">Sense</div><div class="stage" data-s="1">Resonate</div><div class="stage" data-s="2">Transform</div><div class="stage" data-s="3">Decide</div><div class="stage" data-s="4">Act</div>
+        </div>
+        <div class="decision"><span class="big" id="decision">Resting</span><span class="chip warn" id="chip">waiting</span></div>
+      </div>
+
+      <div class="card">
+        <h2>1 · Send it a stimulus</h2>
+        <p class="hint">Pick a memory, damage it, and see if the brain can still recognize it.</p>
+        <div class="seg" id="memButtons" role="group" aria-label="Memory to send"></div>
+        <div class="slider">
+          <label for="damage">Damage to the stimulus</label><span class="val" id="damageVal">15%</span>
+          <input type="range" id="damage" min="0" max="45" step="5" value="15">
+        </div>
+        <div class="row">
+          <button class="primary" id="send">Send stimulus</button>
+          <button id="random">Random event</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>2 · Memories</h2>
+        <p class="hint">How closely the current shape matches each stored memory. The brain decides when one bar stays above 90%.</p>
+        <div class="bars" id="bars"></div>
+        <div class="row">
+          <button id="imprint">Imprint current shape as a new memory</button>
+          <button id="resetMem">Reset to 3 memories</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>3 · The time crystal</h2>
+        <p class="hint">The drive pushes once per beat. A time crystal answers every second beat. That steady half-rhythm is the clock the memories run on.</p>
+        <canvas class="trace" id="trace" width="700" height="190" aria-label="Drive signal and time crystal response over the last few seconds"></canvas>
+        <div class="legend"><span><i class="sw" style="background:var(--muted)"></i>Drive</span><span><i class="sw" style="background:var(--rose)"></i>Time crystal answer</span></div>
+        <div class="stats">
+          <div class="stat"><div class="k">Answer period ÷ drive period</div><div class="v" id="ratio">–</div></div>
+          <div class="stat"><div class="k">Crystal lock</div><div class="v" id="lock">–</div></div>
+        </div>
+        <label class="switch" for="drive"><input type="checkbox" id="drive" checked> Drive on (turn off to melt the crystal)</label>
+        <div class="slider">
+          <label for="noise">Background noise</label><span class="val" id="noiseVal">0.03</span>
+          <input type="range" id="noise" min="0" max="0.30" step="0.01" value="0.03">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h3>How to try it</h3>
+      <ol>
+        <li>Click <b>Send stimulus</b>. Watch the shapes wobble, then snap into the memory. The bar for that memory climbs past 90%.</li>
+        <li>Turn the damage up to 30% or 40% and send again. Sometimes it still recognizes the memory. Sometimes it gets confused.</li>
+        <li>Untick <b>Drive on</b>. The time crystal melts, the lock drops, and the brain can no longer hold a memory. Tick it again and it recovers.</li>
+        <li>Press <b>Random event</b>, then <b>Imprint</b> the shape it settles into. You just taught it a fourth memory.</li>
+      </ol>
+    </section>
+    <section>
+      <h3>What's real physics here</h3>
+      <ul>
+        <li><span class="tag real">Real</span>The core is a classical discrete time crystal. Driven at one rhythm, it locks to exactly half that rhythm, and it stays locked even with noise and uneven parts.</li>
+        <li><span class="tag real">Real</span>Memories are stable phase patterns in coupled oscillators. This is oscillatory associative memory, a known neural-network model.</li>
+        <li><span class="tag real">Real</span>The crystal's half-rhythm pushes every clock toward one of two positions. Oscillator Ising machines compute this way.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>What's from the book</h3>
+      <ul>
+        <li><span class="tag spec">Idea</span>Clocks inside clocks, with ring rhythms set by prime numbers (2, 3, 5). This nods to the Phase Prime Metric.</li>
+        <li><span class="tag spec">Idea</span>Events as shapes, and decisions as the network resonating into a new shape.</li>
+        <li><span class="tag spec">Not built</span>The physical brain jelly and Hinductor. This is a software model of the ideas, not the hardware, and not a conscious machine.</li>
+      </ul>
+    </section>
+  </div>
+
+  <footer>Built by Kuumba Williams with Claude · Simulation runs live in your browser · Model: 8 driven core oscillators (2:1 locking) + 26 memory oscillators in 3 rings</footer>
+</div>
+
+<script>
+(() => {
+  // ---------- helpers ----------
+  const $ = id => document.getElementById(id);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  let rngState = 12345;
+  const rand = () => (rngState = (rngState * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const gauss = () => { let u = 0, v = 0; while (!u) u = rand(); v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+
+  // ---------- network shape ----------
+  const SIZES = [12, 8, 6];            // fast, middle, slow
+  const HARM = [5, 3, 2];              // prime rhythm multiples
+  const N = SIZES.reduce((a, b) => a + b, 0);
+  const ringOf = []; const idxIn = [];
+  SIZES.forEach((n, r) => { for (let i = 0; i < n; i++) { ringOf.push(r); idxIn.push(i); } });
+  const pat = fn => { const out = []; SIZES.forEach((n, r) => { for (let i = 0; i < n; i++) out.push(fn(r, i, n) ? 1 : -1); }); return out; };
+  const BASE = [
+    { name: "Star",  x: pat((r, i) => i % 2 === 0) },
+    { name: "Cross", x: pat((r, i) => r === 0 ? i % 3 === 0 : r === 1 ? i % 4 < 2 : i < 3) },
+    { name: "Wave",  x: pat((r, i) => r === 0 ? i < 6 : r === 1 ? (i % 4 === 0 || i % 4 === 3) : i % 3 === 0) },
+  ];
+  let mems = BASE.map(m => ({ name: m.name, x: m.x.slice() }));
+  let W = [];
+  function buildW() {
+    W = Array.from({ length: N }, () => new Float64Array(N));
+    for (const m of mems) for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (i !== j) W[i][j] += m.x[i] * m.x[j];
+  }
+  buildW();
+
+  // ---------- state ----------
+  const M = 8, w0 = Math.PI, OM = 2 * w0;  // core: natural ~0.5 Hz, drive at 1 Hz
+  const F = 1.5, KC = 2.0, K = 6.0, K2 = 1.5, TAU = 4.0;
+  const wc = Array.from({ length: M }, () => w0 * 1.15 + (rand() - 0.5) * 0.6);
+  let th = Array.from({ length: M }, () => rand() * 2 * Math.PI);
+  let psi = 0, Zr = 0, Zi = 0, L = 0;
+  let phi = Array.from({ length: N }, () => rand() * 2 * Math.PI);
+  let Theta = 0, ThetaU = 0, simT = 0;
+  let driveOn = true, noise = 0.03;
+  let selected = 0, damage = 0.15;
+  let tStim = -99, settled = 0, decided = null;
+  const hist = []; const HIST_SEC = 6;
+
+  function step(dt) {
+    // time crystal core
+    let sx = 0, sy = 0;
+    for (let i = 0; i < M; i++) { sx += Math.cos(th[i]); sy += Math.sin(th[i]); }
+    sx /= M; sy /= M;
+    for (let i = 0; i < M; i++) {
+      let d = wc[i] + KC * (sy * Math.cos(th[i]) - sx * Math.sin(th[i]));
+      if (driveOn) d += F * Math.sin(psi - 2 * th[i]);
+      th[i] += d * dt + 0.05 * Math.sqrt(dt) * gauss();
+    }
+    psi += OM * dt;
+    // drive-locked order (time-averaged so drift cancels)
+    let zr = 0, zi = 0;
+    for (let i = 0; i < M; i++) { const a = 2 * th[i] - psi; zr += Math.cos(a); zi += Math.sin(a); }
+    zr /= M; zi /= M;
+    Zr += (zr - Zr) * dt / TAU; Zi += (zi - Zi) * dt / TAU;
+    L = Math.min(1, Math.hypot(Zr, Zi));
+    const newTheta = Math.atan2(sy, sx);
+    ThetaU += wrap(newTheta - Theta); Theta = newTheta;
+
+    // memory rings
+    const ne = noise + Math.pow(1 - L, 2) * 3.0;
+    const cs = phi.map(Math.cos), sn = phi.map(Math.sin);
+    for (let i = 0; i < N; i++) {
+      let re = 0, im = 0; const Wi = W[i];
+      for (let j = 0; j < N; j++) { re += Wi[j] * cs[j]; im += Wi[j] * sn[j]; }
+      const coup = (K / N) * (im * cs[i] - re * sn[i]);
+      phi[i] += (coup - K2 * L * Math.sin(2 * phi[i])) * dt + ne * Math.sqrt(dt) * gauss();
+    }
+    simT += dt;
+    hist.push([simT, Math.cos(psi), Math.cos(Theta)]);
+    while (hist.length && hist[0][0] < simT - HIST_SEC) hist.shift();
+  }
+
+  function overlaps() {
+    return mems.map(m => {
+      let re = 0, im = 0;
+      for (let i = 0; i < N; i++) { re += m.x[i] * Math.cos(phi[i]); im += m.x[i] * Math.sin(phi[i]); }
+      return { v: Math.hypot(re, im) / N, ref: Math.atan2(im, re) };
+    });
+  }
+
+  // ---------- UI: memory buttons and bars ----------
+  function renderMemUI() {
+    const seg = $("memButtons"); seg.innerHTML = "";
+    mems.forEach((m, k) => {
+      const b = document.createElement("button");
+      b.textContent = m.name; b.id = "mem-" + k;
+      b.setAttribute("aria-pressed", String(k === selected));
+      b.onclick = () => { selected = k; renderMemUI(); };
+      seg.appendChild(b);
+    });
+    const bars = $("bars"); bars.innerHTML = "";
+    mems.forEach((m, k) => {
+      const row = document.createElement("div"); row.className = "bar"; row.id = "bar-" + k;
+      row.innerHTML = `<span class="name"></span><div class="track"><div class="fill"></div></div><span class="pct">0%</span>`;
+      row.querySelector(".name").textContent = m.name;
+      bars.appendChild(row);
+    });
+  }
+  renderMemUI();
+
+  function sendStimulus(fromRandom) {
+    if (fromRandom) phi = phi.map(() => rand() * 2 * Math.PI);
+    else {
+      const x = mems[selected].x.map(v => (rand() < damage ? -v : v));
+      phi = x.map(v => (v > 0 ? 0 : Math.PI) + gauss() * 0.4);
+    }
+    tStim = simT; settled = 0; decided = null;
+  }
+  $("send").onclick = () => sendStimulus(false);
+  $("random").onclick = () => sendStimulus(true);
+  $("damage").oninput = e => { damage = +e.target.value / 100; $("damageVal").textContent = e.target.value + "%"; };
+  $("noise").oninput = e => { noise = +e.target.value; $("noiseVal").textContent = noise.toFixed(2); };
+  $("drive").onchange = e => { driveOn = e.target.checked; };
+  $("imprint").onclick = () => {
+    if (mems.length >= 6) { $("imprint").textContent = "Memory is full (6). Reset to add more."; return; }
+    const ov = overlaps(); let b = 0; ov.forEach((o, k) => { if (o.v > ov[b].v) b = k; });
+    const ref = ov[b].ref;
+    const x = phi.map(p => (Math.cos(p - ref) >= 0 ? 1 : -1));
+    mems.push({ name: "Memory " + (mems.length + 1), x });
+    buildW(); selected = mems.length - 1; renderMemUI();
+    $("imprint").textContent = "Imprinted. Imprint another?";
+  };
+  $("resetMem").onclick = () => {
+    mems = BASE.map(m => ({ name: m.name, x: m.x.slice() })); buildW(); selected = 0; renderMemUI();
+    $("imprint").textContent = "Imprint current shape as a new memory";
+  };
+
+  // ---------- drawing ----------
+  const cv = $("chamber"), g = cv.getContext("2d");
+  const tr = $("trace"), gt = tr.getContext("2d");
+  const ringR = [0.40, 0.29, 0.19];
+  const ringCol = ["--amber", "--teal", "--violet"];
+
+  function drawChamber(ov, best) {
+    const W_ = cv.width, H_ = cv.height, cx = W_ / 2, cy = H_ / 2, S = Math.min(W_, H_);
+    g.clearRect(0, 0, W_, H_);
+    // faint polar grid
+    g.strokeStyle = css("--grid"); g.lineWidth = 1.2;
+    for (const r of [0.1, 0.19, 0.29, 0.40, 0.47]) { g.beginPath(); g.arc(cx, cy, r * S, 0, 2 * Math.PI); g.stroke(); }
+    for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; g.beginPath(); g.moveTo(cx + Math.cos(a) * 0.06 * S, cy + Math.sin(a) * 0.06 * S); g.lineTo(cx + Math.cos(a) * 0.47 * S, cy + Math.sin(a) * 0.47 * S); g.stroke(); }
+    const ref = ov[best].ref;
+    // rings, drawn slow to fast so the fast ring sits on top
+    for (let r = 2; r >= 0; r--) {
+      const col = css(ringCol[r]); const n = SIZES[r];
+      const rot = ThetaU * HARM[r] * 0.08;
+      const pts = [];
+      let off = 0; for (let q = 0; q < r; q++) off += SIZES[q];
+      for (let i = 0; i < n; i++) {
+        const p = phi[off + i];
+        const rad = ringR[r] * S * (1 + 0.24 * Math.cos(p - ref));
+        const a = rot + i * 2 * Math.PI / n - Math.PI / 2;
+        pts.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad]);
+      }
+      g.beginPath(); pts.forEach(([x, y], k) => k ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath();
+      g.globalAlpha = 0.14; g.fillStyle = col; g.fill();
+      g.globalAlpha = 0.9; g.strokeStyle = col; g.lineWidth = 3; g.stroke();
+      g.globalAlpha = 1; g.fillStyle = col;
+      for (const [x, y] of pts) { g.beginPath(); g.arc(x, y, S * 0.012, 0, 2 * Math.PI); g.fill(); }
+    }
+    // core: drive pulse + crystal clocks
+    const rose = css("--rose");
+    const pulse = Math.max(0, Math.cos(psi)) ** 6;
+    if (driveOn) { g.globalAlpha = 0.18 + 0.35 * pulse; g.fillStyle = rose; g.beginPath(); g.arc(cx, cy, S * (0.075 + 0.012 * pulse), 0, 2 * Math.PI); g.fill(); }
+    g.globalAlpha = 1; g.strokeStyle = rose; g.lineWidth = 2;
+    g.beginPath(); g.arc(cx, cy, S * 0.06, 0, 2 * Math.PI); g.stroke();
+    for (let i = 0; i < M; i++) {
+      const a = th[i] - Math.PI / 2;
+      g.fillStyle = rose; g.beginPath(); g.arc(cx + Math.cos(a) * S * 0.06, cy + Math.sin(a) * S * 0.06, S * 0.009, 0, 2 * Math.PI); g.fill();
+    }
+    g.fillStyle = css("--ink"); g.font = `500 ${Math.round(S * 0.022)}px ${css("--f-mono") || "monospace"}`;
+    g.textAlign = "center"; g.fillText("TIME", cx, cy - S * 0.004); g.fillText("CRYSTAL", cx, cy + S * 0.022);
+  }
+
+  function zeroCrossPeriod(k) {
+    const ups = [];
+    for (let i = 1; i < hist.length; i++) if (hist[i - 1][k] < 0 && hist[i][k] >= 0) ups.push(hist[i][0]);
+    if (ups.length < 2) return null;
+    return (ups[ups.length - 1] - ups[0]) / (ups.length - 1);
+  }
+
+  function drawTrace() {
+    const W_ = tr.width, H_ = tr.height; gt.clearRect(0, 0, W_, H_);
+    gt.strokeStyle = css("--grid"); gt.lineWidth = 1;
+    gt.beginPath(); gt.moveTo(0, H_ / 2); gt.lineTo(W_, H_ / 2); gt.stroke();
+    if (hist.length < 2) return;
+    const t0 = simT - HIST_SEC;
+    const X = t => (t - t0) / HIST_SEC * W_;
+    const line = (k, col, w, amp) => {
+      gt.strokeStyle = col; gt.lineWidth = w; gt.beginPath();
+      hist.forEach((h, i) => { const x = X(h[0]), y = H_ / 2 - h[k] * amp * H_ / 2; i ? gt.lineTo(x, y) : gt.moveTo(x, y); });
+      gt.stroke();
+    };
+    if (driveOn) line(1, css("--muted"), 2, 0.45);
+    line(2, css("--rose"), 3.5, 0.85);
+  }
+
+  // ---------- status ----------
+  const stages = [...document.querySelectorAll(".stage")];
+  function setStage(s) { stages.forEach((el, k) => { el.classList.toggle("on", k === s); el.classList.toggle("done", s >= 0 && k < s); }); }
+
+  function updateStatus(ov, best) {
+    const bv = ov[best].v;
+    ov.forEach((o, k) => {
+      const row = $("bar-" + k); if (!row) return;
+      row.classList.toggle("best", k === best && bv > 0.6);
+      row.querySelector(".fill").style.width = (o.v * 100).toFixed(1) + "%";
+      row.querySelector(".pct").textContent = Math.round(o.v * 100) + "%";
+    });
+    const since = simT - tStim;
+    if (bv > 0.9) settled += 1 / 60; else settled = 0;
+    let stage = -1, text = "Resting", chip = ["warn", "waiting"];
+    if (tStim < 0) { stage = -1; }
+    else if (since < 0.5) { stage = 0; text = "Sensing…"; chip = ["warn", "stimulus in"]; }
+    else if (bv < 0.6) { stage = 1; text = "Resonating…"; chip = ["warn", "searching"]; }
+    else if (bv < 0.9) { stage = 2; text = "Transforming…"; chip = ["warn", "taking shape"]; }
+    else if (settled < 0.8) { stage = 3; text = "Deciding…"; chip = ["warn", "locking in"]; }
+    else { stage = 4; decided = mems[best].name; text = decided; chip = ["good", Math.round(bv * 100) + "% match"]; }
+    if (tStim >= 0 && since > 8 && stage < 3) { text = "No clear memory"; chip = ["bad", "confused"]; }
+    if (L < 0.5 && tStim >= 0 && stage < 4) { chip = ["bad", "crystal melted"]; }
+    setStage(stage);
+    $("decision").textContent = text;
+    const c = $("chip"); c.className = "chip " + chip[0]; c.textContent = chip[1];
+    const pd = zeroCrossPeriod(1), pr = zeroCrossPeriod(2);
+    $("ratio").textContent = driveOn && pd && pr ? (pr / pd).toFixed(2) + "×" : (driveOn ? "–" : "drive off");
+    $("lock").textContent = Math.round(L * 100) + "%";
+  }
+
+  // ---------- loop ----------
+  // warm up so the page opens in a working state: crystal locked, Star recalled
+  for (let i = 0; i < 1500; i++) step(0.01);
+  selected = 0; sendStimulus(false);
+  for (let i = 0; i < 400; i++) step(0.01);
+
+  let last = performance.now();
+  function frame(now) {
+    const dtReal = Math.min(0.05, (now - last) / 1000); last = now;
+    const n = Math.max(1, Math.round(dtReal / 0.01));
+    for (let i = 0; i < n; i++) step(0.01);
+    const ov = overlaps(); let best = 0; ov.forEach((o, k) => { if (o.v > ov[best].v) best = k; });
+    drawChamber(ov, best); drawTrace(); updateStatus(ov, best);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
