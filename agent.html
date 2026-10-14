@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NANOBRAIN Agent v0.1</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef1ec; --surface:#f8faf6; --ink:#1d2433; --muted:#556072; --line:#cfd5cc;
+  --fast:#c8435d; --mid:#a06d0c; --slow:#1b7471; --ok:#2c7a37; --bad:#b0352b; --focus:#2f5fd0;
+  --sans:"Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --serif:"Newsreader", Georgia, "Times New Roman", serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#151a24; --surface:#1d2330; --ink:#e7eae4; --muted:#a2abb9; --line:#323a4a;
+    --fast:#f27d93; --mid:#e3b04a; --slow:#55c2bd; --ok:#73c781; --bad:#f07b6f; --focus:#8fb0ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#151a24; --surface:#1d2330; --ink:#e7eae4; --muted:#a2abb9; --line:#323a4a;
+  --fast:#f27d93; --mid:#e3b04a; --slow:#55c2bd; --ok:#73c781; --bad:#f07b6f; --focus:#8fb0ff;
+  color-scheme: dark;
+}
+:root{ box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+*,*::before,*::after{ box-sizing:inherit; }
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:16px; line-height:1.5; }
+img,canvas{ max-width:100%; }
+a{ color:var(--slow); }
+:focus-visible{ outline:3px solid var(--focus); outline-offset:2px; }
+.wrap{ max-width:1180px; margin:0 auto; padding:28px 20px 60px; }
+
+header.top{ display:grid; grid-template-columns:minmax(260px,440px) 1fr; gap:36px; align-items:center; }
+.brainbox{ position:relative; }
+#brain{ width:100%; aspect-ratio:1/1; display:block; }
+.ringkey{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:6px; font-size:13px; }
+.ringkey div{ border-top:3px solid currentColor; padding-top:6px; }
+.ringkey b{ display:block; color:var(--ink); font-weight:600; }
+.ringkey span{ color:var(--muted); }
+.ringkey .n{ font-variant-numeric:tabular-nums; color:var(--ink); }
+.k-fast{ color:var(--fast); } .k-mid{ color:var(--mid); } .k-slow{ color:var(--slow); }
+
+h1{ font-family:var(--serif); font-weight:600; font-size:clamp(40px,6vw,68px); line-height:1.02; margin:0 0 14px; letter-spacing:-0.01em; }
+h1 small{ display:block; font-family:var(--sans); font-size:16px; font-weight:500; color:var(--muted); letter-spacing:0; margin-top:10px; }
+.lede{ font-size:18px; max-width:56ch; margin:0 0 22px; }
+label.big{ display:block; font-weight:600; margin-bottom:6px; }
+.goalrow{ display:flex; gap:10px; flex-wrap:wrap; }
+#topic{ flex:1 1 260px; font:inherit; font-size:18px; padding:12px 14px; border:2px solid var(--line); border-radius:10px; background:var(--surface); color:var(--ink); }
+button{ font:inherit; font-weight:600; border-radius:10px; padding:12px 18px; border:2px solid transparent; cursor:pointer; }
+button:disabled{ opacity:.45; cursor:not-allowed; }
+.go{ background:var(--slow); color:#fff; }
+.stop{ background:transparent; color:var(--bad); border-color:var(--bad); }
+.quiet{ background:transparent; color:var(--ink); border-color:var(--line); padding:8px 12px; font-weight:500; }
+.examples{ margin-top:10px; font-size:14px; color:var(--muted); display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.examples button{ padding:4px 10px; font-weight:500; font-size:14px; background:transparent; border:1px solid var(--line); color:var(--ink); border-radius:999px; }
+.controls{ display:flex; gap:20px; flex-wrap:wrap; margin-top:18px; font-size:14px; color:var(--muted); align-items:center; }
+.controls label{ display:flex; gap:8px; align-items:center; }
+#status{ margin-top:16px; font-size:15px; min-height:1.5em; }
+#status.bad{ color:var(--bad); } #status.ok{ color:var(--ok); }
+
+h2{ font-family:var(--serif); font-weight:600; font-size:28px; margin:48px 0 6px; }
+.sub{ color:var(--muted); margin:0 0 16px; max-width:70ch; }
+.grid2{ display:grid; grid-template-columns:1.1fr .9fr; gap:28px; align-items:start; }
+
+ol.loop{ list-style:none; margin:0; padding:0; counter-reset:s; border-left:2px solid var(--line); }
+ol.loop li{ counter-increment:s; position:relative; padding:10px 0 10px 44px; }
+ol.loop li::before{ content:counter(s); position:absolute; left:-15px; top:10px; width:28px; height:28px; border-radius:50%; background:var(--bg); border:2px solid var(--line); display:grid; place-items:center; font-size:13px; font-weight:600; color:var(--muted); }
+ol.loop li.on::before{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+ol.loop li.done::before{ border-color:var(--ok); color:var(--ok); }
+ol.loop .t{ font-weight:600; }
+ol.loop .tag{ font-size:12px; margin-left:8px; font-weight:600; }
+ol.loop .d{ color:var(--muted); font-size:14px; }
+ol.loop .note{ display:block; font-size:14px; margin-top:2px; }
+ol.loop li.on .note{ color:var(--ink); }
+
+.panel{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:18px; }
+.panel h3{ margin:0 0 10px; font-size:17px; }
+dl.goal{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:6px 14px; font-size:14px; }
+dl.goal dt{ color:var(--muted); }
+dl.goal dd{ margin:0; }
+ul.crit{ list-style:none; padding:0; margin:0; }
+ul.crit li::before{ content:"○ "; color:var(--muted); }
+ul.crit li.pass::before{ content:"✓ "; color:var(--ok); font-weight:700; }
+ul.crit li.fail::before{ content:"✗ "; color:var(--bad); font-weight:700; }
+pre{ margin:0; font-size:12.5px; line-height:1.45; overflow-x:auto; white-space:pre; font-family:Consolas, "Cascadia Mono", Menlo, monospace; }
+
+.cands{ width:100%; border-collapse:collapse; font-size:14px; }
+.tablewrap{ overflow-x:auto; }
+.cands th,.cands td{ text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+.cands th{ color:var(--muted); font-weight:500; }
+.cands td.num{ font-variant-numeric:tabular-nums; white-space:nowrap; }
+.pill{ display:inline-block; font-size:12px; padding:1px 8px; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.pill.ok{ color:var(--ok); } .pill.bad{ color:var(--bad); } .pill.mid{ color:var(--mid); }
+
+article.brief{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:26px 30px; font-family:var(--serif); font-size:18px; line-height:1.6; }
+article.brief h3{ font-size:26px; margin:0 0 4px; }
+article.brief .meta{ font-family:var(--sans); font-size:14px; color:var(--muted); margin-bottom:16px; }
+article.brief ol{ padding-left:1.4em; } article.brief li{ margin-bottom:10px; max-width:72ch; }
+article.brief sup a{ text-decoration:none; font-family:var(--sans); font-size:12px; font-weight:600; }
+article.brief .sources{ font-family:var(--sans); font-size:14px; }
+.approve{ margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-family:var(--sans); font-size:15px; }
+.empty{ color:var(--muted); font-style:italic; }
+
+#audit{ max-height:340px; overflow:auto; font-size:13px; }
+#audit div{ padding:4px 0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:72px 92px 1fr; gap:8px; }
+#audit .tm{ color:var(--muted); font-variant-numeric:tabular-nums; }
+#audit .kd{ font-weight:600; }
+#audit .k-error,#audit .k-blocked,#audit .k-stop{ color:var(--bad); }
+#audit .k-tool{ color:var(--slow); } #audit .k-predict{ color:var(--mid); } #audit .k-approval{ color:var(--ok); }
+
+.mem3{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.mem3 ul{ padding-left:18px; margin:0; font-size:14px; }
+.mem3 li{ margin-bottom:6px; }
+.honest{ font-size:15px; max-width:75ch; }
+.honest p{ margin:0 0 10px; }
+footer{ margin-top:50px; color:var(--muted); font-size:14px; }
+
+@media (max-width:860px){
+  header.top,.grid2,.mem3{ grid-template-columns:1fr; }
+  .brainbox{ max-width:420px; }
+  #audit div{ grid-template-columns:64px 1fr; } #audit .msg{ grid-column:1/-1; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brainbox">
+    <canvas id="brain" aria-label="Three rings of 48 clocks each: fast, medium and slow working memory"></canvas>
+    <div class="ringkey">
+      <div class="k-fast"><b>Fast ring</b><span>What it sees now</span><br><span>Lock <span class="n" id="lf">–</span></span></div>
+      <div class="k-mid"><b>Medium ring</b><span>The current step</span><br><span>Lock <span class="n" id="lm">–</span></span></div>
+      <div class="k-slow"><b>Slow ring</b><span>The goal</span><br><span>Holds goal <span class="n" id="ls">–</span></span></div>
+    </div>
+  </div>
+  <div>
+    <h1>NANOBRAIN Agent<small>Version 0.1, by Bruce Derrick “Kuumba” Williams</small></h1>
+    <p class="lede">Give it a topic. It makes a plan, searches Wikipedia, checks its own work, and writes you a short brief where every sentence shows its source. Its working memory is the set of time-crystal rings on the left.</p>
+    <label class="big" for="topic">What should NANOBRAIN research?</label>
+    <div class="goalrow">
+      <input id="topic" type="text" maxlength="120" placeholder="For example: time crystal" autocomplete="off">
+      <button class="go" id="start">Start research</button>
+      <button class="stop" id="kill" disabled>Stop now</button>
+    </div>
+    <div class="examples">Try:
+      <button data-ex="Time crystal">Time crystal</button>
+      <button data-ex="Microtubule">Microtubule</button>
+      <button data-ex="Olmecs">Olmecs</button>
+      <button data-ex="Phishing">Phishing</button>
+    </div>
+    <div class="controls">
+      <label><input type="checkbox" id="drive" checked> Time-crystal drive on</label>
+      <label>Noise <input type="range" id="noise" min="0" max="0.6" step="0.02" value="0.08"> <span id="noiseVal">0.08</span></label>
+    </div>
+    <div id="status" role="status" aria-live="polite">Ready. Type a topic and press Start research.</div>
+  </div>
+</header>
+
+<h2>The agent loop</h2>
+<p class="sub">Each step lights up as the agent works. The colored tag shows which rhythm runs that step: fast for checks, medium for the current step, slow for the goal, and meta for learning across runs.</p>
+<div class="grid2">
+  <ol class="loop" id="loop"></ol>
+  <div>
+    <div class="panel">
+      <h3>Goal</h3>
+      <dl class="goal" id="goalView"><dt>Objective</dt><dd class="empty">No goal yet</dd></dl>
+    </div>
+    <div class="panel">
+      <h3>Plan</h3>
+      <pre id="planView" class="empty">The plan appears here once a goal is set.</pre>
+    </div>
+  </div>
+</div>
+
+<h2>What it found</h2>
+<p class="sub">Search results ranked by the NANOBRAIN state evaluator. “Fit” mixes plain word matching with resonance: how well the result agrees with the goal pattern held in the slow ring.</p>
+<div class="panel tablewrap" id="candView"><span class="empty">Nothing searched yet.</span></div>
+
+<h2>The brief</h2>
+<div id="briefView"><p class="empty">The finished brief appears here.</p></div>
+
+<h2>Memory</h2>
+<p class="sub">Saved in this browser only. Episodic memory keeps what happened. Semantic memory keeps facts it learned. Procedural memory keeps rules it learned from repeated mistakes, and those rules change how it plans next time.</p>
+<div class="mem3">
+  <div class="panel"><h3>Episodic</h3><div id="memEp"></div></div>
+  <div class="panel"><h3>Semantic</h3><div id="memSem"></div></div>
+  <div class="panel"><h3>Procedural</h3><div id="memProc"></div></div>
+</div>
+<button class="quiet" id="forget">Forget everything</button>
+
+<h2>Tools and safety rules</h2>
+<p class="sub">Every tool has a type, a time limit, a retry rule and a side-effect class. The agent can only use tools on the allowlist. Saving a file waits for your approval. Tools that could send, run or deploy things are denied.</p>
+<div class="panel tablewrap" id="toolView"></div>
+
+<h2>Audit log</h2>
+<p class="sub">Every decision, prediction and tool call, with the time it happened.</p>
+<div class="panel" id="audit"><span class="empty">Empty.</span></div>
+
+<h2>What is real here</h2>
+<div class="honest">
+  <p>The rings are a real simulation: 144 coupled oscillators. A drive pushes them at one rhythm and they answer at half that rhythm, which is how a classical time crystal behaves. A stored pattern of “up” and “down” clocks acts as memory. Turn the drive off and the slow ring slowly loses the goal; the agent notices and says so.</p>
+  <p>The searches are real. They go to Wikipedia, and every sentence in the brief is copied from the article it cites, so you can check it. The critic confirms each sentence really appears in its source before the brief is accepted.</p>
+  <p>There is no large language model inside yet. Version 0.1 writes the brief by choosing and citing real sentences rather than writing new ones. A language model can be plugged in later as the part that explains and rewrites, while NANOBRAIN keeps the goal and the working memory.</p>
+</div>
+
+<footer>NANOBRAIN Agent v0.1. Inspired by Anirban Bandyopadhyay’s book “Nanobrain.” Search results come from Wikipedia under the CC BY-SA license.</footer>
+</div>
+
+<script>
+'use strict';
+/* ===================== helpers ===================== */
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clamp = (x,a,b) => Math.max(a, Math.min(b, x));
+const pct = x => Math.round(x*100) + '%';
+function rng(seed){ let s = seed>>>0; return () => { s = (s + 0x6D2B79F5)>>>0; let t = s; t = Math.imul(t ^ t>>>15, t|1); t ^= t + Math.imul(t ^ t>>>7, t|61); return ((t ^ t>>>14)>>>0) / 4294967296; }; }
+function gauss(r){ let u = 0, v = 0; while(!u) u = r(); while(!v) v = r(); return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v); }
+function hashStr(w){ let h = 2166136261; for (let i=0;i<w.length;i++){ h ^= w.charCodeAt(i); h = Math.imul(h, 16777619); } return h>>>0; }
+const STOP = new Set('the and for are but not you all any can had her was one our out has his how its may new now old see two who did get let say she too use with that this from they will have were been than then them what when which their there about would these other into more some such only also over most many very just like your after first where while being under between because during through each those same both well even made used known called often within upon against among since until early later'.split(' '));
+function words(text){ return (String(text).toLowerCase().match(/[a-z0-9\u00c0-\u024f]+/g) || []).filter(w => w.length > 2 && !STOP.has(w)); }
+const stem = w => w.slice(0, 5);
+
+/* ===================== NANOBRAIN core ===================== */
+const N = 48;
+function encode(text){
+  const v = new Float32Array(N), ws = words(text), p = new Int8Array(N);
+  for (const w of ws){ const r = rng(hashStr(stem(w))); for (let i=0;i<N;i++) v[i] += r() < .5 ? -1 : 1; }
+  if (!ws.length){ const r = rng(1); for (let i=0;i<N;i++) v[i] = r() - .5; }
+  for (let i=0;i<N;i++) p[i] = v[i] >= 0 ? 1 : -1;
+  return p;
+}
+function overlap(a, b){ let s = 0; for (let i=0;i<N;i++) s += a[i]*b[i]; return s / N; }
+
+class Ring {
+  constructor(id, hz, seed){
+    this.id = id; this.hz = hz; this.r = rng(seed);
+    this.th = new Float32Array(N); this.dw = new Float32Array(N);
+    for (let i=0;i<N;i++){ this.th[i] = (this.r()*2-1)*Math.PI; this.dw[i] = 0.6 + (this.r()*2-1)*0.2; }
+    this.W = new Float32Array(N*N); this.pattern = null; this.target = null; this.push = 0; this.pushLeft = 0; this.lock = 0; this.lab = 0; this.zr = 0; this.zi = 0; this.H = 0;
+  }
+  imprint(p){ this.pattern = p; for (let i=0;i<N;i++) for (let j=0;j<N;j++) this.W[i*N+j] = i === j ? 0 : p[i]*p[j]/N; }
+  perturb(p, strength = 3, secs = 2){ this.target = p; this.push = strength; this.pushLeft = secs; }
+  step(dt, F, noise, K){
+    const th = this.th, W = this.W, s = new Float32Array(N), c = new Float32Array(N);
+    for (let j=0;j<N;j++){ s[j] = Math.sin(th[j]); c[j] = Math.cos(th[j]); }
+    for (let i=0;i<N;i++){
+      let a = 0, b = 0; const row = i*N;
+      for (let j=0;j<N;j++){ const w = W[row+j]; if (w){ a += w*s[j]; b += w*c[j]; } }
+      let d = this.dw[i] + K*(c[i]*a - s[i]*b) - F*Math.sin(2*th[i]);
+      if (this.pushLeft > 0 && this.target){ const tgt = this.target[i] > 0 ? 0 : Math.PI; d -= this.push*Math.sin(th[i] - tgt); }
+      th[i] += d*dt + noise*Math.sqrt(dt)*gauss(this.r);
+      if (th[i] > Math.PI) th[i] -= 2*Math.PI; else if (th[i] < -Math.PI) th[i] += 2*Math.PI;
+    }
+    if (this.pushLeft > 0) this.pushLeft -= dt;
+    /* Lock to the drive: the time-averaged half-rhythm signal. It fades when the clocks drift away from the drive. */
+    let re = 0, im = 0; for (let i=0;i<N;i++){ re += Math.cos(2*th[i]); im += Math.sin(2*th[i]); }
+    const a = Math.min(1, dt/4); this.zr += (re/N - this.zr)*a; this.zi += (im/N - this.zi)*a; this.lock = Math.hypot(this.zr, this.zi);
+    /* How much of the stored pattern can be read out right now, measured against the drive's timing. */
+    if (this.pattern){ let o = 0; for (let i=0;i<N;i++) o += (Math.cos(th[i]) >= 0 ? 1 : -1)*this.pattern[i]; this.H += (Math.max(0, o/N) - this.H)*Math.min(1, dt/3); }
+  }
+  readout(){ const p = new Int8Array(N); for (let i=0;i<N;i++) p[i] = Math.cos(this.th[i]) >= 0 ? 1 : -1; return p; }
+  holds(){ return this.pattern ? this.H : 0; }
+}
+const brain = { fast: new Ring('fast', 1.6, 11), mid: new Ring('mid', 0.8, 22), slow: new Ring('slow', 0.4, 33), F: 1.3, noise: 0.08, K: 1.6 };
+brain.rings = [brain.fast, brain.mid, brain.slow];
+/* Resonance: how well a piece of text agrees with the goal pattern the slow ring is holding right now. */
+function resonance(text){ return overlap(encode(text), brain.slow.readout()); }
+
+/* ===================== drawing ===================== */
+const cv = $('#brain'), ctx = cv.getContext('2d');
+let COLORS = {};
+function readColors(){ const cs = getComputedStyle(document.documentElement); COLORS = { fast: cs.getPropertyValue('--fast').trim(), mid: cs.getPropertyValue('--mid').trim(), slow: cs.getPropertyValue('--slow').trim(), line: cs.getPropertyValue('--line').trim(), ink: cs.getPropertyValue('--ink').trim() }; }
+readColors(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readColors);
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function resize(){ const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1; cv.width = Math.round(r.width*d); cv.height = Math.round(r.width*d); }
+window.addEventListener('resize', resize); resize();
+let drivePhase = 0, lastT = performance.now();
+function frame(t){
+  const real = Math.min(0.05, (t - lastT)/1000); lastT = t;
+  const F = $('#drive').checked ? brain.F : 0;
+  for (let k=0;k<2;k++) for (const r of brain.rings) r.step(0.025, F, brain.noise, brain.K);
+  drivePhase += 2*Math.PI*0.8*real;
+  const W = cv.width, H = cv.height, cx = W/2, cy = H/2, R = Math.min(W,H)/2;
+  ctx.clearRect(0,0,W,H);
+  const radii = { fast: 0.88, mid: 0.62, slow: 0.36 };
+  for (const ring of brain.rings){
+    ring.lab += Math.PI*ring.hz*real;
+    const rr = R*radii[ring.id], col = COLORS[ring.id];
+    ctx.strokeStyle = COLORS.line; ctx.lineWidth = Math.max(1, R*0.004);
+    ctx.beginPath(); ctx.arc(cx, cy, rr, 0, 2*Math.PI); ctx.stroke();
+    for (let i=0;i<N;i++){
+      const a = 2*Math.PI*i/N - Math.PI/2;
+      const v = Math.cos(ring.th[i] + (reduceMotion ? 0 : ring.lab));
+      const x = cx + rr*Math.cos(a), y = cy + rr*Math.sin(a);
+      ctx.globalAlpha = 0.18 + 0.82*(v+1)/2; ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(x, y, R*(0.012 + 0.018*(v+1)/2), 0, 2*Math.PI); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = F ? 0.25 + 0.75*(Math.cos(drivePhase)+1)/2 : 0.12; ctx.fillStyle = COLORS.ink;
+  ctx.beginPath(); ctx.arc(cx, cy, R*0.05, 0, 2*Math.PI); ctx.fill(); ctx.globalAlpha = 1;
+  { $('#lf').textContent = pct(brain.fast.lock); $('#lm').textContent = pct(brain.mid.lock); $('#ls').textContent = brain.slow.pattern ? pct(brain.slow.holds()) : '–'; }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+$('#noise').addEventListener('input', e => { brain.noise = +e.target.value; $('#noiseVal').textContent = (+e.target.value).toFixed(2); });
+$('#drive').addEventListener('change', e => {
+  if (e.target.checked){ for (const r of brain.rings) if (r.pattern) r.perturb(r.pattern, 3, 3); audit('decision', 'You turned the time-crystal drive on. The goal is re-written into the rings from the goal record.'); }
+  else audit('decision', 'You turned the time-crystal drive off. The rings will drift and lose the goal.');
+});
+
+/* ===================== memory (this browser only) ===================== */
+const MEMKEY = 'nanobrain-agent-v0.1';
+function blankMem(){ return { version:1, episodic:[], semantic:[], procedural:{ lessons:{}, rules:[] }, world:{} }; }
+function loadMem(){ try { const v = JSON.parse(localStorage.getItem(MEMKEY) || 'null'); if (v && v.version === 1) return v; } catch(e){} return blankMem(); }
+function saveMem(){ try { localStorage.setItem(MEMKEY, JSON.stringify(MEM)); return true; } catch(e){ return false; } }
+let MEM = loadMem();
+const RULES = {
+  skip_disambiguation: 'Skip results whose summary says “may refer to” before reading them.',
+  widen_search: 'Start with two searches and ten results instead of one search and eight.',
+  stricter_relevance: 'Only keep sentences with a fit score of 0.20 or more.',
+  longer_timeout: 'Give Wikipedia 50% more time before giving up.'
+};
+const LESSON_RULE = { disambiguation:'skip_disambiguation', few_results:'widen_search', off_topic:'stricter_relevance', timeout:'longer_timeout' };
+function hasRule(r){ return MEM.procedural.rules.includes(r); }
+
+/* ===================== audit log ===================== */
+const AUDIT = [];
+function audit(kind, msg){
+  const d = new Date(), tm = d.toTimeString().slice(0,8);
+  AUDIT.push({ tm, kind, msg });
+  const box = $('#audit'); if (AUDIT.length === 1) box.innerHTML = '';
+  const row = document.createElement('div');
+  row.innerHTML = `<span class="tm">${tm}</span><span class="kd k-${kind}">${esc(kind)}</span><span class="msg">${esc(msg)}</span>`;
+  box.appendChild(row); box.scrollTop = box.scrollHeight;
+}
+
+/* ===================== tools ===================== */
+const WIKI = 'https://en.wikipedia.org/w/api.php';
+const ALLOW_HOSTS = ['en.wikipedia.org'];
+async function wikiGet(params, signal){
+  const u = new URL(WIKI);
+  if (!ALLOW_HOSTS.includes(u.hostname)) throw new Error('Host not on the allowlist');
+  for (const [k, v] of Object.entries({ ...params, format:'json', origin:'*' })) u.searchParams.set(k, v);
+  const r = await fetch(u, { signal });
+  if (!r.ok) throw new Error('Wikipedia answered with error ' + r.status);
+  return r.json();
+}
+const clean = s => String(s).replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&');
+const TOOLS = {
+  search_web: { what:'Search Wikipedia for articles', side:'read-only', permission:'automatic', timeout:10000, retry:1, enabled:true,
+    expect:'between 1 and 10 article titles',
+    validate: a => (typeof a.query === 'string' && a.query.trim().length >= 2 && a.query.length <= 120) ? null : 'query must be 2 to 120 characters',
+    run: async (a, signal) => { const j = await wikiGet({ action:'query', list:'search', srsearch:a.query, srlimit:String(a.limit || 8), srprop:'snippet' }, signal);
+      return (j.query && j.query.search || []).map(x => ({ title:x.title, snippet:clean(x.snippet), url:'https://en.wikipedia.org/wiki/' + encodeURIComponent(x.title.replace(/ /g, '_')) })); },
+    summarize: o => o.length + ' results' },
+  read_page: { what:'Read the text of one Wikipedia article', side:'read-only', permission:'automatic', timeout:12000, retry:1, enabled:true,
+    expect:'article text of at least 300 characters',
+    validate: a => (typeof a.title === 'string' && a.title.length > 0 && a.title.length <= 250) ? null : 'title is required',
+    run: async (a, signal) => { const j = await wikiGet({ action:'query', prop:'extracts|info', inprop:'url', explaintext:'1', exsectionformat:'plain', redirects:'1', titles:a.title }, signal);
+      const pages = j.query && j.query.pages ? Object.values(j.query.pages) : []; const p = pages[0];
+      if (!p || p.missing !== undefined) throw new Error('Article not found');
+      return { title:p.title, url:p.fullurl || ('https://en.wikipedia.org/wiki/' + encodeURIComponent(p.title.replace(/ /g, '_'))), text:String(p.extract || '').slice(0, 14000) }; },
+    summarize: o => o.text.length + ' characters from “' + o.title + '”' },
+  save_memory: { what:'Save the run to memory in this browser', side:'reversible', permission:'automatic', timeout:2000, retry:0, enabled:true,
+    expect:'saved', validate: () => null, run: async () => { if (!saveMem()) throw new Error('This browser blocked saving'); return 'saved'; }, summarize: () => 'saved' },
+  write_file: { what:'Save the brief to your computer', side:'creates a file on your computer', permission:'asks you first', timeout:5000, retry:0, enabled:true,
+    expect:'a downloaded .md file', validate: () => null, run: null, summarize: () => 'file saved' },
+  send_message: { what:'Send an email or message', side:'irreversible', permission:'denied', timeout:0, retry:0, enabled:false },
+  execute_shell: { what:'Run commands on a computer', side:'irreversible', permission:'denied', timeout:0, retry:0, enabled:false },
+  deploy_service: { what:'Publish or deploy software', side:'irreversible', permission:'denied', timeout:0, retry:0, enabled:false }
+};
+class KillErr extends Error { constructor(){ super('Stopped by you'); this.name = 'KillErr'; } }
+class GovErr extends Error { constructor(m){ super(m); this.name = 'GovErr'; } }
+function checkKill(){ if (RUN && RUN.killed) throw new KillErr(); }
+function worldUpdate(name, ok, ms){
+  const w = MEM.world[name] || (MEM.world[name] = { tries:0, ok:0, avgMs:0 });
+  w.tries++; if (ok) w.ok++; w.avgMs = Math.round(w.avgMs + (ms - w.avgMs)/w.tries); renderTools();
+}
+async function callTool(name, args){
+  checkKill();
+  const t = TOOLS[name];
+  if (!t){ audit('blocked', `Unknown tool “${name}”. Refused.`); throw new GovErr('Unknown tool'); }
+  if (!t.enabled){ audit('blocked', `${name} is on the denylist (${t.side}). Refused.`); throw new GovErr(name + ' is not allowed'); }
+  const bad = t.validate(args); if (bad){ audit('blocked', `${name}: ${bad}. Refused.`); throw new GovErr(bad); }
+  if (RUN.toolCalls >= RUN.goal.budget.maxToolCalls){ audit('blocked', 'Tool budget used up.'); throw new GovErr('Budget used up'); }
+  if (Date.now() - RUN.started > RUN.goal.budget.maxSeconds*1000){ audit('blocked', 'Time budget used up.'); throw new GovErr('Time budget used up'); }
+  const sig = name + ':' + JSON.stringify(args);
+  if (RUN.failedSigs.includes(sig)){ audit('critic', `Refused to repeat an action that already failed: ${name}(${JSON.stringify(args)}).`); throw new GovErr('Repeat of a failed action'); }
+  RUN.toolCalls++; renderGoal();
+  audit('predict', `${name}: expecting ${t.expect}.`);
+  const timeout = t.timeout * (hasRule('longer_timeout') ? 1.5 : 1);
+  let lastErr;
+  for (let attempt = 0; attempt <= t.retry; attempt++){
+    checkKill();
+    const ctrl = new AbortController(); RUN.ctrl = ctrl;
+    const timer = setTimeout(() => ctrl.abort(), timeout), t0 = performance.now();
+    try {
+      const out = await t.run(args, ctrl.signal); clearTimeout(timer);
+      const ms = Math.round(performance.now() - t0); worldUpdate(name, true, ms);
+      audit('tool', `${name}(${JSON.stringify(args)}) gave ${t.summarize(out)} in ${ms} ms.`);
+      RUN.actions.push({ tool:name, args, ok:true, ms, state:snapshot() });
+      return out;
+    } catch(e){
+      clearTimeout(timer); if (RUN.killed) throw new KillErr();
+      const ms = Math.round(performance.now() - t0); worldUpdate(name, false, ms);
+      const why = e.name === 'AbortError' ? 'timed out' : (e.message || 'failed');
+      if (e.name === 'AbortError') RUN.lessons.push('timeout');
+      audit('error', `${name} attempt ${attempt+1} ${why}.`);
+      brain.fast.imprint(encode('error failure ' + why)); brain.fast.perturb(brain.fast.pattern, 3, 1.5);
+      lastErr = e;
+      if (attempt < t.retry){ audit('decision', `Retrying ${name} once (its retry rule allows 1).`); await sleep(800); }
+    }
+  }
+  RUN.failedSigs.push(sig); RUN.actions.push({ tool:name, args, ok:false, state:snapshot() });
+  throw lastErr;
+}
+function snapshot(){ return { fast:+brain.fast.lock.toFixed(2), mid:+brain.mid.lock.toFixed(2), slowHolds:+brain.slow.holds().toFixed(2) }; }
+
+/* ===================== UI pieces ===================== */
+const LOOP = [
+  ['Perceive', 'Read the goal you typed.', 'fast'],
+  ['Encode', 'Turn words into a pattern of up and down clocks.', 'fast'],
+  ['Update state', 'Let the rings settle into the pattern.', 'fast'],
+  ['Retrieve', 'Look in memory for related past work and learned rules.', 'slow'],
+  ['Plan', 'Break the goal into typed steps.', 'mid'],
+  ['Act', 'Use a tool.', 'mid'],
+  ['Observe result', 'Feed what came back into the fast ring.', 'fast'],
+  ['Evaluate', 'The critic checks the result against the goal.', 'fast'],
+  ['Reflect', 'Write down what went wrong and what to change.', 'meta'],
+  ['Repeat or stop', 'Keep going, or stop when the goal is met.', 'mid']
+];
+const TAGCOL = { fast:'var(--fast)', mid:'var(--mid)', slow:'var(--slow)', meta:'var(--ink)' };
+const TAGNAME = { fast:'fast', mid:'medium', slow:'slow', meta:'meta' };
+function renderLoop(){
+  $('#loop').innerHTML = LOOP.map((s, i) => `<li id="st${i+1}"><span class="t">${s[0]}</span><span class="tag" style="color:${TAGCOL[s[2]]}">${TAGNAME[s[2]]}</span><div class="d">${s[1]}</div><span class="note" id="nt${i+1}"></span></li>`).join('');
+}
+function step(n, note){
+  for (let i=1;i<=10;i++){ const li = $('#st'+i); if (li.classList.contains('on')){ li.classList.remove('on'); li.classList.add('done'); } }
+  const li = $('#st'+n); li.classList.remove('done'); li.classList.add('on'); if (note) $('#nt'+n).textContent = note;
+}
+function note(n, text){ $('#nt'+n).textContent = text; }
+function status(text, cls){ const s = $('#status'); s.textContent = text; s.className = cls || ''; }
+
+function renderGoal(){
+  const g = RUN && RUN.goal; if (!g) return;
+  const crit = g.criteria.map(c => `<li class="${c.state || ''}">${esc(c.text)}</li>`).join('');
+  const plan = RUN.plan ? RUN.plan.steps.map(s => (s.id === g.subgoal ? '▶ ' : (s.done ? '✓ ' : '· ')) + s.name).join('<br>') : 'Not made yet';
+  $('#goalView').innerHTML = `
+    <dt>Objective</dt><dd>${esc(g.objective)}</dd>
+    <dt>Success</dt><dd><ul class="crit">${crit}</ul></dd>
+    <dt>Rules</dt><dd>${g.constraints.map(esc).join('<br>')}</dd>
+    <dt>Plan</dt><dd>${plan}</dd>
+    <dt>Now doing</dt><dd>${esc(g.subgoal || '–')}</dd>
+    <dt>Budget</dt><dd>${RUN.toolCalls} of ${g.budget.maxToolCalls} tool calls, ${g.budget.maxSeconds} seconds at most</dd>
+    <dt>Confidence</dt><dd>${g.confidence == null ? 'Not known yet' : pct(g.confidence)}</dd>
+    <dt>Failures</dt><dd>${g.failures.length ? g.failures.map(esc).join('<br>') : 'None so far'}</dd>`;
+}
+function renderTools(){
+  const rows = Object.entries(TOOLS).map(([k, t]) => {
+    const w = MEM.world[k]; const rec = w ? `${w.ok} of ${w.tries} worked, about ${w.avgMs} ms` : 'Not used yet';
+    const st = t.enabled ? (t.permission === 'asks you first' ? '<span class="pill mid">asks you</span>' : '<span class="pill ok">allowed</span>') : '<span class="pill bad">denied</span>';
+    return `<tr><td><b>${k}</b><br><span style="color:var(--muted)">${esc(t.what)}</span></td><td>${esc(t.side)}</td><td>${st}</td><td class="num">${t.timeout ? (t.timeout/1000) + ' s, ' + t.retry + ' retry' : '–'}</td><td>${t.enabled ? esc(rec) : '–'}</td></tr>`;
+  }).join('');
+  $('#toolView').innerHTML = `<table class="cands"><thead><tr><th>Tool</th><th>Side effect</th><th>Permission</th><th>Time limit</th><th>Track record</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function renderMemory(){
+  const ep = MEM.episodic.slice(-5).reverse();
+  $('#memEp').innerHTML = ep.length ? '<ul>' + ep.map(e => `<li><b>${esc(e.goal)}</b><br>${esc(new Date(e.when).toLocaleString())}: ${esc(e.outcome)}, ${e.toolCalls} tool calls${e.failures.length ? ', ' + e.failures.length + ' problem(s)' : ''}</li>`).join('') + '</ul>' : '<span class="empty">No runs yet.</span>';
+  const sem = MEM.semantic.slice(-4).reverse();
+  $('#memSem').innerHTML = sem.length ? '<ul>' + sem.map(s => `<li><b>${esc(s.topic)}</b>: ${s.facts.length} facts from ${esc(s.sources.map(x => x.title).join(', '))}</li>`).join('') + '</ul>' : '<span class="empty">No facts yet.</span>';
+  const lessons = Object.entries(MEM.procedural.lessons);
+  $('#memProc').innerHTML = (MEM.procedural.rules.length ? '<ul>' + MEM.procedural.rules.map(r => `<li><b>Rule:</b> ${esc(RULES[r])}</li>`).join('') + '</ul>' : '<span class="empty">No rules yet. A lesson becomes a rule after it happens twice.</span>')
+    + (lessons.length ? '<p style="font-size:14px;margin:10px 0 0;color:var(--muted)">Lessons seen: ' + lessons.map(([k, v]) => esc(k.replace('_', ' ')) + ' ×' + v).join(', ') + '</p>' : '');
+}
+
+/* ===================== agent ===================== */
+let RUN = null;
+function makeGoal(topic){
+  return {
+    objective: `Write a short cited brief about “${topic}”.`,
+    criteria: [
+      { id:'sources', text:'Uses at least 3 different sources' },
+      { id:'findings', text:'Has at least 5 findings' },
+      { id:'cited', text:'Every finding has a citation' },
+      { id:'proven', text:'Every finding really appears in its source' },
+      { id:'ontopic', text:'Every finding is about the topic' }
+    ],
+    constraints: ['Only use en.wikipedia.org', 'Never send, run or deploy anything', 'Ask before saving a file'],
+    subgoal: null, budget: { maxToolCalls: 16, maxSeconds: 120 }, confidence: null, failures: []
+  };
+}
+function similarTopic(a, b){
+  const A = new Set(words(a).map(stem)), B = new Set(words(b).map(stem)); if (!A.size || !B.size) return 0;
+  let inter = 0; for (const x of A) if (B.has(x)) inter++; return inter / (A.size + B.size - inter);
+}
+function kwScore(text, topic){
+  const T = [...new Set(words(topic).map(stem))]; if (!T.length) return 0;
+  const S = new Set(words(text).map(stem)); let hit = 0; for (const t of T) if (S.has(t)) hit++; return hit / T.length;
+}
+function fit(text, topic){ const k = kwScore(text, topic), r = Math.max(0, resonance(text)); return { k, r, score: 0.6*k + 0.4*r }; }
+async function settle(ring, target, ms){
+  const t0 = Date.now(); while (Date.now() - t0 < ms){ checkKill(); if (ring.holds() >= target) return true; await sleep(150); } return ring.holds() >= target;
+}
+function setSubgoal(id){
+  RUN.goal.subgoal = id; const s = RUN.plan && RUN.plan.steps.find(x => x.id === id);
+  if (s){ const p = encode(s.name + ' ' + RUN.topic); brain.mid.imprint(p); brain.mid.perturb(p, 3, 2); }
+  renderGoal();
+}
+function finishSubgoal(id){ const s = RUN.plan.steps.find(x => x.id === id); if (s) s.done = true; renderGoal(); }
+function observe(text){ const p = encode(text); brain.fast.imprint(p); brain.fast.perturb(p, 3, 1.5); return 1 - Math.max(0, resonance(text)); }
+function failure(type, text){ RUN.goal.failures.push(text); RUN.lessons.push(type); renderGoal(); audit('critic', text); }
+
+function makePlan(goal, recall){
+  const widen = hasRule('widen_search');
+  const queries = widen ? [RUN.topic, RUN.topic + ' overview'] : [RUN.topic];
+  return {
+    goal: goal.objective,
+    preconditions: ['Wikipedia can be reached', 'The slow ring is holding the goal'],
+    steps: [
+      { id:'search', name:'search for articles', tool:'search_web', done:false },
+      { id:'extract', name:'read the best articles', tool:'read_page', done:false },
+      { id:'synthesize', name:'pick and cite the best sentences', tool:null, done:false },
+      { id:'verify', name:'critic checks the brief', tool:null, done:false },
+      { id:'write', name:'save brief and memory', tool:'save_memory, write_file', done:false }
+    ],
+    queries, resultsPerSearch: widen ? 10 : 8,
+    remembered: recall ? recall.sources.map(s => s.title) : [],
+    requiredTools: ['search_web', 'read_page', 'save_memory', 'write_file'],
+    expectedObservations: ['3 or more relevant articles', 'each article has 300+ characters of text'],
+    abortConditions: ['you press Stop now', 'tool or time budget used up', 'no search results after the fallback search'],
+    fallback: 'Search again with “' + RUN.topic + ' overview” and “' + RUN.topic + ' history”, then read the next-best articles.',
+    rulesApplied: MEM.procedural.rules.map(r => RULES[r]),
+    relevanceThreshold: hasRule('stricter_relevance') ? 0.20 : 0.12
+  };
+}
+function showPlan(){
+  const p = RUN.plan, view = { goal:p.goal, preconditions:p.preconditions, steps:p.steps.map(s => s.name + (s.tool ? '  [' + s.tool + ']' : '')), queries:p.queries,
+    remembered_sources:p.remembered, required_tools:p.requiredTools, expected_observations:p.expectedObservations, abort_conditions:p.abortConditions, fallback:p.fallback, learned_rules_applied:p.rulesApplied };
+  const el = $('#planView'); el.className = ''; el.textContent = JSON.stringify(view, null, 2);
+}
+function renderCands(c){
+  $('#candView').innerHTML = `<table class="cands"><thead><tr><th>Article</th><th>Fit</th><th>Words match</th><th>Resonance</th><th>Decision</th></tr></thead><tbody>` +
+    c.map(x => `<tr><td><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>${x.fromMemory ? ' <span class="pill mid">from memory</span>' : ''}<br><span style="color:var(--muted)">${esc(x.snippet || '')}</span></td><td class="num"><b>${x.fit.score.toFixed(2)}</b></td><td class="num">${pct(x.fit.k)}</td><td class="num">${x.fit.r.toFixed(2)}</td><td>${x.decision ? `<span class="pill ${x.decisionCls}">${esc(x.decision)}</span>` : ''}</td></tr>`).join('') + '</tbody></table>';
+}
+function sentences(text){
+  const out = [];
+  for (const para of text.split(/\n+/)){
+    if (para.length < 60) continue;
+    for (const s of para.split(/(?<=[.!?])\s+(?=[A-Z0-9"“(])/)){
+      const t = s.trim(); if (t.length < 40 || t.length > 320) continue; if (/may refer to/i.test(t)) continue; if (!/[.!?]$/.test(t)) continue;
+      out.push(t);
+    }
+  }
+  return out;
+}
+function jacc(a, b){ const A = new Set(words(a)), B = new Set(words(b)); let i = 0; for (const x of A) if (B.has(x)) i++; return i / Math.max(1, A.size + B.size - i); }
+
+async function search(queries, limit, seen){
+  const found = [];
+  for (const q of queries){
+    step(6, `search_web(“${q}”)`);
+    let res = [];
+    try { res = await callTool('search_web', { query:q, limit }); }
+    catch(e){ if (e instanceof KillErr) throw e; failure('few_results', `Search for “${q}” failed: ${e.message}.`); continue; }
+    step(7); const sal = observe(res.map(r => r.title).join(' '));
+    note(7, `${res.length} results came back. Surprise level ${pct(sal)}.`);
+    for (const r of res){ if (!seen.has(r.title)){ seen.add(r.title); found.push(r); } }
+    await sleep(500);
+  }
+  return found;
+}
+
+async function runAgent(topic){
+  RUN = { topic, killed:false, toolCalls:0, started:Date.now(), failedSigs:[], actions:[], lessons:[], goal:null, plan:null, ctrl:null };
+  renderLoop(); $('#briefView').innerHTML = '<p class="empty">Working…</p>'; $('#candView').innerHTML = '<span class="empty">Searching…</span>';
+  $('#start').disabled = true; $('#kill').disabled = false; $('#topic').disabled = true;
+  audit('decision', `New goal: research “${topic}”.`);
+  let outcome = 'stopped', docs = [], brief = null;
+  try {
+    /* 1 Perceive */
+    status('Reading your goal…'); step(1, `Goal: “${topic}”.`);
+    RUN.goal = makeGoal(topic); renderGoal(); await sleep(600);
+    /* 2 Encode */
+    step(2); const gp = encode(topic); brain.slow.imprint(gp); brain.slow.perturb(gp, 3, 3);
+    note(2, `“${topic}” became a pattern of ${N} up-and-down clocks, stored in the slow ring.`); await sleep(600);
+    /* 3 Update state */
+    step(3, 'Letting the rings settle…'); status('Letting the rings settle on the goal…');
+    const held = await settle(brain.slow, 0.8, 7000);
+    note(3, `The slow ring holds the goal at ${pct(brain.slow.holds())}. Lock ${pct(brain.slow.lock)}.`);
+    if (!held){ failure('weak_memory', `Working memory is weak: the slow ring holds only ${pct(brain.slow.holds())} of the goal. Rankings will lean on word matching.`); }
+    /* 4 Retrieve */
+    step(4); let recall = null, best = 0;
+    for (const s of MEM.semantic){ const sim = similarTopic(topic, s.topic); if (sim > best){ best = sim; recall = s; } }
+    if (best < 0.34) recall = null;
+    note(4, (recall ? `Found related past work on “${recall.topic}”. Will reuse its sources.` : 'Nothing similar in memory.') + (MEM.procedural.rules.length ? ` Applying ${MEM.procedural.rules.length} learned rule(s).` : ''));
+    audit('decision', recall ? `Retrieved semantic memory for “${recall.topic}”.` : 'No related memory found.');
+    await sleep(600);
+    /* 5 Plan */
+    step(5, 'Plan written. See the Plan box.'); RUN.plan = makePlan(RUN.goal, recall); showPlan(); renderGoal(); await sleep(700);
+
+    /* search */
+    setSubgoal('search'); status('Searching Wikipedia…');
+    const seen = new Set(); let cands = await search(RUN.plan.queries, RUN.plan.resultsPerSearch, seen);
+    for (const t of RUN.plan.remembered){ if (!seen.has(t)){ seen.add(t); cands.push({ title:t, snippet:'', url:'https://en.wikipedia.org/wiki/' + encodeURIComponent(t.replace(/ /g, '_')), fromMemory:true }); } }
+    step(8);
+    if (cands.length < 3){
+      failure('few_results', `Only ${cands.length} result(s). Using the fallback plan.`);
+      step(9, 'Too few results. Changing the plan: wider search.'); await sleep(500);
+      cands = cands.concat(await search([topic + ' overview', topic + ' history'], 10, seen));
+    }
+    if (!cands.length){ step(10, 'Stopped: nothing to read.'); throw new GovErr('No search results. Try different words for the topic.'); }
+    /* filter + rank with the state evaluator */
+    if (!brain.slow.holds() || brain.slow.holds() < 0.5) audit('critic', 'Slow ring is not holding the goal well; resonance scores are unreliable right now.');
+    for (const c of cands){
+      c.fit = fit(c.title + ' ' + c.snippet, topic);
+      if (/\(disambiguation\)/i.test(c.title) || (hasRule('skip_disambiguation') && /may refer to/i.test(c.snippet))){ c.skip = true; c.decision = 'skipped: list page'; c.decisionCls = 'bad'; }
+    }
+    cands.sort((a, b) => ((a.skip ? 1 : 0) - (b.skip ? 1 : 0)) || (b.fit.score - a.fit.score)); renderCands(cands);
+    note(8, `Ranked ${cands.length} articles by fit. Best: “${cands[0].title}”.`);
+    finishSubgoal('search'); await sleep(700);
+
+    /* extract */
+    setSubgoal('extract'); status('Reading the best articles…');
+    const queue = cands.filter(c => !c.skip);
+    while (docs.length < 3 && queue.length){
+      const c = queue.shift();
+      step(6, `read_page(“${c.title}”)`);
+      let page;
+      try { page = await callTool('read_page', { title:c.title }); }
+      catch(e){ if (e instanceof KillErr) throw e; c.decision = 'could not read'; c.decisionCls = 'bad'; renderCands(cands); failure('read_error', `Could not read “${c.title}”: ${e.message}.`); continue; }
+      step(7); const sal = observe(page.text.slice(0, 600)); note(7, `Read ${page.text.length} characters. Surprise level ${pct(sal)}.`);
+      step(8);
+      if (/may refer to/i.test(page.text.slice(0, 400))){ c.decision = 'skipped: list page'; c.decisionCls = 'bad'; renderCands(cands); failure('disambiguation', `“${page.title}” is a list of meanings, not an article. Skipped.`); step(9, 'Lesson: check summaries for “may refer to” first.'); continue; }
+      if (page.text.length < 300){ c.decision = 'too short'; c.decisionCls = 'bad'; renderCands(cands); failure('read_error', `“${page.title}” had almost no text. Skipped.`); continue; }
+      if (docs.some(d => d.title === page.title)){ c.decision = 'same as another'; c.decisionCls = 'mid'; renderCands(cands); continue; }
+      c.decision = 'read'; c.decisionCls = 'ok'; renderCands(cands);
+      docs.push(page); note(8, `Good source. ${docs.length} of 3 so far.`); await sleep(400);
+      if (docs.length < 3 && !queue.length && !RUN.widened){
+        RUN.widened = true; failure('few_results', 'Ran out of good articles. Using the fallback plan.'); step(9, 'Changing the plan: wider search.');
+        const more = await search([topic + ' overview', topic + ' history'], 10, seen);
+        for (const m of more){ m.fit = fit(m.title + ' ' + m.snippet, topic); if (!/\(disambiguation\)/i.test(m.title)) queue.push(m); cands.push(m); }
+        queue.sort((a, b) => b.fit.score - a.fit.score); renderCands(cands);
+      }
+    }
+    finishSubgoal('extract');
+    if (!docs.length) throw new GovErr('Could not read any articles. Try a different topic.');
+
+    /* synthesize + verify, with one replan */
+    let perDoc = 2, threshold = RUN.plan.relevanceThreshold;
+    for (let round = 1; round <= 2; round++){
+      setSubgoal('synthesize'); status('Picking and citing sentences…');
+      step(5, round === 1 ? 'Picking the best sentences from each source.' : 'Re-planning: taking more sentences from each source.');
+      const findings = [];
+      docs.forEach((d, di) => {
+        const ss = sentences(d.text).slice(0, 60).map((s, i) => { const f = fit(s, topic); return { s, f, score: f.score + 0.12*(1 - Math.min(i, 20)/20) }; });
+        ss.sort((a, b) => b.score - a.score);
+        let took = 0;
+        for (const x of ss){ if (took >= perDoc) break; if (x.f.score < threshold && took > 0) break; if (findings.some(f => jacc(f.text, x.s) > 0.5)) continue; findings.push({ text:x.s, src:di, fit:x.f }); took++; }
+      });
+      finishSubgoal('synthesize');
+      /* critic */
+      setSubgoal('verify'); step(8, 'The critic is checking the brief.'); status('The critic is checking the brief…'); await sleep(600);
+      const kept = [];
+      for (const f of findings){
+        if (f.fit.k === 0 && f.fit.r < 0.15){ failure('off_topic', `Dropped a sentence that is not about “${topic}”.`); continue; }
+        kept.push(f);
+      }
+      const usedSrc = new Set(kept.map(f => f.src));
+      const checks = {
+        sources: usedSrc.size >= 3,
+        findings: kept.length >= 5,
+        cited: kept.every(f => Number.isInteger(f.src) && docs[f.src]),
+        proven: kept.every(f => docs[f.src].text.replace(/\s+/g, ' ').includes(f.text.replace(/\s+/g, ' '))),
+        ontopic: kept.every(f => f.fit.k > 0 || f.fit.r >= 0.15)
+      };
+      for (const c of RUN.goal.criteria) c.state = checks[c.id] ? 'pass' : 'fail';
+      const meanFit = kept.length ? kept.reduce((a, f) => a + f.fit.score, 0)/kept.length : 0;
+      RUN.goal.confidence = clamp(0.35*meanFit/0.6 + 0.25*Math.min(1, usedSrc.size/3) + 0.25*Math.min(1, kept.length/5) + 0.15*brain.slow.holds(), 0, 1);
+      renderGoal();
+      const pass = Object.values(checks).every(Boolean);
+      audit('critic', `Round ${round}: ${Object.entries(checks).map(([k, v]) => k + ' ' + (v ? 'passed' : 'failed')).join(', ')}.`);
+      brief = { topic, findings:kept, docs, pass, when:new Date() };
+      if (pass) { note(8, 'All five success checks passed.'); finishSubgoal('verify'); break; }
+      if (round === 1 && !checks.findings && docs.length){ failure('few_findings', `Only ${kept.length} findings. Re-planning to take 3 sentences per source.`); step(9, 'Not enough findings. Taking more from each source.'); perDoc = 3; await sleep(600); continue; }
+      note(8, 'Some checks failed. The brief is kept but marked as not meeting every goal.'); finishSubgoal('verify'); break;
+    }
+    outcome = brief.pass ? 'met every goal' : 'finished, some goals missed';
+    renderBrief(brief);
+
+    /* reflect */
+    step(9); const ref = reflect(brief);
+    note(9, ref.change);
+    /* save memory */
+    setSubgoal('write');
+    MEM.semantic.push({ topic, when:Date.now(), sources:docs.map(d => ({ title:d.title, url:d.url })), facts:brief.findings.slice(0, 5).map(f => ({ text:f.text, title:docs[f.src].title })) });
+    if (MEM.semantic.length > 30) MEM.semantic.shift();
+    storeEpisode(outcome, ref);
+    try { await callTool('save_memory', {}); } catch(e){ if (e instanceof KillErr) throw e; }
+    renderMemory(); finishSubgoal('write');
+    /* stop */
+    step(10, brief.pass ? 'Goal met. Stopped. Waiting for your OK to save the file.' : 'Stopped. Brief is ready, with notes on what it missed.');
+    status(brief.pass ? 'Done. The brief met every success check. Scroll down to read it.' : 'Done, but not every success check passed. The brief shows which ones.', brief.pass ? 'ok' : '');
+  } catch(e){
+    if (e instanceof KillErr){
+      outcome = 'stopped by you'; audit('stop', 'Kill switch pressed. Every tool call was cancelled. Nothing was saved to your computer.');
+      status('Stopped. Nothing was saved to your computer.', 'bad'); step(10, 'Stopped by you.');
+    } else {
+      outcome = 'stopped: ' + e.message; audit('stop', e.message); status(e.message, 'bad'); step(10, 'Stopped: ' + e.message);
+    }
+    if (!brief) $('#briefView').innerHTML = '<p class="empty">No brief this time.</p>';
+    const ref = reflect(brief); storeEpisode(outcome, ref); saveMem(); renderMemory();
+  } finally {
+    for (let i=1;i<=10;i++){ const li = $('#st'+i); if (li.classList.contains('on')){ li.classList.remove('on'); li.classList.add('done'); } }
+    $('#start').disabled = false; $('#kill').disabled = true; $('#topic').disabled = false;
+  }
+}
+
+function reflect(brief){
+  const types = [...new Set(RUN.lessons)];
+  const r = {
+    attempted: `Research “${RUN.topic}” and write a cited brief.`,
+    failed: RUN.goal && RUN.goal.failures.length ? RUN.goal.failures.join(' ') : 'Nothing failed.',
+    why: types.length ? types.map(t => ({ disambiguation:'Some results were lists of meanings, not articles.', few_results:'The first search did not return enough good articles.', off_topic:'Some sentences matched poorly with the goal.', timeout:'Wikipedia was slow to answer.', read_error:'Some articles could not be read.', weak_memory:'The slow ring was not holding the goal firmly.', few_findings:'Each source gave too few good sentences.' }[t] || t)).join(' ') : 'No problems found.',
+    evidence: `${RUN.toolCalls} tool calls; ${RUN.actions.filter(a => !a.ok).length} failed. Slow ring held the goal at ${pct(brain.slow.holds())}.`,
+    change: 'Keep the same plan next time.'
+  };
+  const promoted = [];
+  for (const t of types){
+    if (!LESSON_RULE[t]) continue;
+    MEM.procedural.lessons[t] = (MEM.procedural.lessons[t] || 0) + 1;
+    const rule = LESSON_RULE[t];
+    if (MEM.procedural.lessons[t] >= 2 && !hasRule(rule)){ MEM.procedural.rules.push(rule); promoted.push(rule); }
+  }
+  if (promoted.length){ r.change = 'New rule learned: ' + promoted.map(p => RULES[p]).join(' '); audit('meta', 'Lesson seen twice, promoted to a rule: ' + promoted.map(p => RULES[p]).join(' ')); }
+  else if (types.some(t => LESSON_RULE[t])) r.change = 'Lesson noted. If it happens again, it becomes a rule.';
+  audit('reflect', `Tried: ${r.attempted} Problems: ${r.failed} Why: ${r.why} Next time: ${r.change}`);
+  return r;
+}
+function storeEpisode(outcome, ref){
+  MEM.episodic.push({ when:Date.now(), goal:RUN.topic, outcome, toolCalls:RUN.toolCalls, seconds:Math.round((Date.now() - RUN.started)/1000), failures:RUN.goal ? RUN.goal.failures : [], reflection:ref, actions:RUN.actions.slice(-20) });
+  if (MEM.episodic.length > 30) MEM.episodic.shift();
+}
+
+/* ===================== brief + approved save ===================== */
+let LAST_BRIEF = null;
+function briefMarkdown(b){
+  const used = [...new Set(b.findings.map(f => f.src))];
+  const num = Object.fromEntries(used.map((s, i) => [s, i+1]));
+  let md = `# Brief: ${b.topic}\n\nWritten by NANOBRAIN Agent v0.1 on ${b.when.toLocaleDateString()}.\n\n## Findings\n\n`;
+  b.findings.forEach((f, i) => { md += `${i+1}. ${f.text} [${num[f.src]}]\n`; });
+  md += `\n## Sources\n\n`; used.forEach((s, i) => { md += `[${i+1}] ${b.docs[s].title}. Wikipedia. ${b.docs[s].url}\n`; });
+  md += `\nText from Wikipedia, available under the CC BY-SA license.\n`;
+  return md;
+}
+function renderBrief(b){
+  LAST_BRIEF = b;
+  const used = [...new Set(b.findings.map(f => f.src))], num = Object.fromEntries(used.map((s, i) => [s, i+1]));
+  const checks = RUN.goal.criteria.map(c => `<li class="${c.state}">${esc(c.text)}</li>`).join('');
+  $('#briefView').innerHTML = `<article class="brief">
+    <h3>${esc(b.topic)}</h3>
+    <div class="meta">${b.findings.length} findings from ${used.length} sources. Confidence ${pct(RUN.goal.confidence)}. Every sentence is quoted from the source it cites.</div>
+    <ol>${b.findings.map(f => `<li>${esc(f.text)} <sup><a href="${esc(b.docs[f.src].url)}" target="_blank" rel="noopener">[${num[f.src]}]</a></sup></li>`).join('')}</ol>
+    <div class="sources"><b>Sources</b><br>${used.map((s, i) => `[${i+1}] <a href="${esc(b.docs[s].url)}" target="_blank" rel="noopener">${esc(b.docs[s].title)}</a>, Wikipedia`).join('<br>')}</div>
+    <div class="sources" style="margin-top:12px"><b>Success checks</b><ul class="crit">${checks}</ul></div>
+    <div class="approve"><span>The agent wants to save this brief as a file on your computer.</span>
+      <button class="go" id="approveSave">Approve: save the brief</button>
+      <button class="quiet" id="copyBrief">Copy the brief</button></div>
+  </article>`;
+  $('#approveSave').addEventListener('click', () => {
+    audit('approval', 'You approved write_file.');
+    const md = briefMarkdown(LAST_BRIEF), blob = new Blob([md], { type:'text/markdown' }), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'brief-' + LAST_BRIEF.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.md';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    audit('tool', `write_file(“${a.download}”) saved the brief to your Downloads folder.`); worldUpdate('write_file', true, 0);
+    status('Saved. Look in your Downloads folder for ' + a.download, 'ok');
+  });
+  $('#copyBrief').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(briefMarkdown(LAST_BRIEF)); status('Copied. Press Ctrl+V to paste it anywhere.', 'ok'); }
+    catch(e){ status('Copying was blocked by the browser. Use Approve: save the brief instead.', 'bad'); }
+  });
+}
+
+/* ===================== wire up ===================== */
+renderLoop(); renderTools(); renderMemory();
+function start(){
+  const t = $('#topic').value.trim();
+  if (t.length < 2){ status('Type a topic first, at least 2 letters.', 'bad'); $('#topic').focus(); return; }
+  runAgent(t);
+}
+$('#start').addEventListener('click', start);
+$('#topic').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('#start').disabled) start(); });
+$('#kill').addEventListener('click', () => { if (RUN){ RUN.killed = true; if (RUN.ctrl) RUN.ctrl.abort(); } });
+document.querySelectorAll('[data-ex]').forEach(b => b.addEventListener('click', () => { if ($('#start').disabled) return; $('#topic').value = b.dataset.ex; start(); }));
+$('#forget').addEventListener('click', () => {
+  if (!confirm('Forget every past run, fact and learned rule saved in this browser?')) return;
+  MEM = blankMem(); try { localStorage.removeItem(MEMKEY); } catch(e){}
+  renderMemory(); renderTools(); audit('decision', 'You cleared all memory.');
+});
+</script>
+</body>
+</html>
