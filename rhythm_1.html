@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NANOBRAIN Rhythm Learner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef1ec; --surface:#f8faf6; --ink:#1d2433; --muted:#556072; --line:#cfd5cc;
+  --fast:#c8435d; --mid:#a06d0c; --slow:#1b7471; --ok:#2c7a37; --bad:#b0352b; --focus:#2f5fd0;
+  --sans:"Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --serif:"Newsreader", Georgia, "Times New Roman", serif; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#151a24; --surface:#1d2330; --ink:#e7eae4; --muted:#a2abb9; --line:#323a4a;
+    --fast:#f27d93; --mid:#e3b04a; --slow:#55c2bd; --ok:#73c781; --bad:#f07b6f; --focus:#8fb0ff; color-scheme:dark; }
+}
+:root[data-theme="dark"]{ --bg:#151a24; --surface:#1d2330; --ink:#e7eae4; --muted:#a2abb9; --line:#323a4a;
+  --fast:#f27d93; --mid:#e3b04a; --slow:#55c2bd; --ok:#73c781; --bad:#f07b6f; --focus:#8fb0ff; color-scheme:dark; }
+*,*::before,*::after{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:16px; line-height:1.5; }
+:focus-visible{ outline:3px solid var(--focus); outline-offset:2px; }
+canvas{ display:block; width:100%; }
+.wrap{ max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+h1{ font-family:var(--serif); font-weight:600; font-size:clamp(40px,6vw,66px); line-height:1.02; margin:0 0 12px; letter-spacing:-0.01em; }
+h1 small{ display:block; font-family:var(--sans); font-size:16px; font-weight:500; color:var(--muted); margin-top:10px; }
+.lede{ font-size:19px; max-width:60ch; margin:0 0 8px; }
+h2{ font-family:var(--serif); font-weight:600; font-size:30px; margin:52px 0 6px; display:flex; gap:14px; align-items:baseline; }
+h2 .n{ font-family:var(--sans); font-size:15px; font-weight:700; width:30px; height:30px; border-radius:50%; background:var(--ink); color:var(--bg); display:inline-grid; place-items:center; flex:none; transform:translateY(-4px); }
+h3{ font-size:17px; margin:0 0 8px; }
+.sub{ color:var(--muted); margin:0 0 18px; max-width:72ch; }
+.small{ font-size:14px; color:var(--muted); }
+.panel{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 18px; }
+.empty{ color:var(--muted); font-style:italic; margin:0; }
+button{ font:inherit; cursor:pointer; color:var(--ink); }
+button:disabled{ opacity:.45; cursor:not-allowed; }
+.go{ background:var(--slow); color:#fff; font-weight:600; border:0; border-radius:10px; padding:12px 20px; }
+.quiet{ background:transparent; border:1px solid var(--line); border-radius:10px; padding:8px 14px; }
+.presets{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+.preset,.intr{ text-align:left; background:var(--surface); border:2px solid var(--line); border-radius:12px; padding:12px 14px; }
+.preset b,.intr b{ display:block; }
+.preset span,.intr span{ display:block; font-size:14px; color:var(--muted); }
+.preset.on{ border-color:var(--slow); box-shadow:inset 0 0 0 1px var(--slow); }
+.row{ display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin:10px 0 14px; font-size:15px; }
+.row label{ display:flex; gap:8px; align-items:center; }
+.key{ display:flex; gap:18px; flex-wrap:wrap; font-size:14px; color:var(--muted); margin-top:8px; }
+.key i{ display:inline-block; width:18px; height:3px; vertical-align:middle; margin-right:6px; border-radius:2px; }
+.status{ min-height:1.5em; margin:10px 0 0; font-size:15px; } .status.ok{ color:var(--ok); }
+.grid2{ display:grid; grid-template-columns:1.6fr 1fr; gap:20px; align-items:start; }
+.beatlist{ margin:0 0 8px; padding-left:20px; font-size:18px; font-weight:600; color:var(--bad); }
+.callout{ margin-top:16px; padding:12px 16px; border-left:4px solid var(--muted); background:var(--surface); border-radius:0 10px 10px 0; max-width:80ch; }
+.callout.ok{ border-left-color:var(--ok); }
+.lamps{ display:grid; grid-template-columns:1fr 1fr auto; gap:12px; margin-bottom:12px; align-items:stretch; }
+.lamp{ display:flex; gap:12px; align-items:center; padding:12px 14px; border:2px solid var(--line); border-radius:12px; background:var(--surface); }
+.lamp .dot{ width:16px; height:16px; border-radius:50%; background:var(--line); flex:none; }
+.lamp b{ display:block; font-size:14px; color:var(--muted); font-weight:500; }
+.lamp .lt{ font-weight:600; }
+.lamp .cnt{ margin-left:auto; text-align:right; font-size:13px; color:var(--muted); }
+.lamp .cnt span{ display:block; font-size:22px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; }
+#lampN.on{ border-color:var(--bad); } #lampN.on .dot{ background:var(--bad); }
+#lampS.on{ border-color:var(--mid); } #lampS.on .dot{ background:var(--mid); }
+.clockbox{ padding:12px 14px; font-size:14px; color:var(--muted); align-self:center; }
+.clockbox span{ display:block; color:var(--ink); font-weight:600; font-size:15px; white-space:nowrap; }
+.intrs{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:14px 0; }
+.intr{ border-color:var(--mid); }
+table.t{ width:100%; border-collapse:collapse; font-size:15px; }
+table.t th,table.t td{ text-align:left; padding:8px; border-bottom:1px solid var(--line); vertical-align:top; }
+table.t th{ color:var(--muted); font-weight:500; font-size:14px; }
+table.t td.num{ font-variant-numeric:tabular-nums; }
+table.t tr.fa td{ border-top:2px solid var(--line); }
+.tw{ overflow-x:auto; }
+.pill{ display:inline-block; font-size:13px; padding:1px 9px; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.pill.ok{ color:var(--ok); } .pill.bad{ color:var(--bad); } .pill.mid{ color:var(--mid); }
+.honest{ max-width:76ch; } .honest p{ margin:0 0 12px; }
+footer{ margin-top:48px; color:var(--muted); font-size:14px; }
+@media (max-width:820px){ .presets{ grid-template-columns:1fr 1fr; } .intrs{ grid-template-columns:1fr 1fr; } .grid2,.lamps{ grid-template-columns:1fr; } }
+@media (max-width:480px){ .presets,.intrs{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>NANOBRAIN Rhythm Learner<small>Self-tuning clocks, by Bruce Derrick “Kuumba” Williams</small></h1>
+  <p class="lede">Nobody tells these clocks what to listen for. They tune themselves to whatever beat they hear, then keep that beat. Anything that breaks the rhythm stands out, like an insect landing in a spider’s web.</p>
+</header>
+
+<h2><span class="n">1</span>Pick a rhythm</h2>
+<p class="sub">This is three weeks of made-up activity, such as traffic on a network. Each choice has a different beat, and one has none at all.</p>
+<div class="presets" id="presets"></div>
+<div class="row">
+  <label>Noise <input type="range" id="noise" min="0" max="0.15" step="0.01" value="0.05"> <span id="noiseVal">0.05</span></label>
+  <button class="quiet" id="newData">New random data</button>
+</div>
+<div class="panel"><canvas id="histChart" data-h="210" aria-label="Three weeks of activity. Weeks 1 and 2 are for learning, week 3 is for the self-check."></canvas>
+  <div class="key"><span><i style="background:var(--ink)"></i>What happened</span><span><i style="background:var(--slow)"></i>What NANOBRAIN predicted for week 3, without seeing it</span></div></div>
+
+<h2><span class="n">2</span>Listen and learn</h2>
+<p class="sub">36 clocks start at different speeds, from every 3 hours to every 10 days. As they listen, each one speeds up or slows down until it matches a beat in the data. Clocks that find nothing fade out.</p>
+<button class="go" id="learn">Listen and learn</button>
+<p class="status" id="learnStatus" role="status" aria-live="polite"></p>
+<div class="grid2">
+  <div class="panel"><canvas id="tuneChart" data-h="320" aria-label="Each clock's speed over time, settling onto the beats in the data"></canvas></div>
+  <div class="panel" id="beats"></div>
+</div>
+<div id="selfcheck"></div>
+
+<h2><span class="n">3</span>Watch the web</h2>
+<p class="sub">Now NANOBRAIN watches two new weeks, minute by minute. Add an intruder at any moment and see who notices: NANOBRAIN, which asks “is this out of rhythm?”, or a simple alarm, which only asks “is this too high or too low?”</p>
+<div class="lamps">
+  <div class="lamp" id="lampN"><span class="dot"></span><div><b>NANOBRAIN</b><span class="lt">Waiting</span></div><div class="cnt">alerts<span id="cntN">0</span></div></div>
+  <div class="lamp" id="lampS"><span class="dot"></span><div><b>Simple alarm</b><span class="lt">Waiting</span></div><div class="cnt">alerts<span id="cntS">0</span></div></div>
+  <div class="clockbox">Time now<span id="clock">–</span></div>
+</div>
+<div class="panel"><canvas id="streamChart" data-h="260" aria-label="The last three days of activity compared with the learned rhythm"></canvas>
+  <div class="key"><span><i style="background:var(--ink)"></i>What is happening</span><span><i style="background:var(--slow)"></i>What the rhythm says should happen</span><span><i style="background:var(--mid);opacity:.5"></i>Intruder you added</span><span><i style="background:var(--bad)"></i>NANOBRAIN alarm</span></div></div>
+<div class="row">
+  <button class="go" id="play">Start watching</button>
+  <label>Speed <select id="speed"><option value="1">Slow</option><option value="3" selected>Normal</option><option value="10">Fast</option></select></label>
+</div>
+<h3>Add an intruder now</h3>
+<div class="intrs" id="intruders"></div>
+<div class="panel tw" id="eventlog"></div>
+
+<h2><span class="n">4</span>Proof test</h2>
+<p class="sub">One intruder at a time proves little. This hides 120 intruders at random times in fresh data, runs two clean weeks to count false alarms, and scores both detectors.</p>
+<button class="go" id="proofBtn" disabled>Run the proof test</button>
+<div class="panel tw" id="proof" style="margin-top:14px"></div>
+
+<h2>What is real here</h2>
+<div class="honest">
+  <p>The clocks are real adaptive oscillators, a published method (Righetti, Buchli and Ijspeert, 2006). Each clock changes its own speed in response to what it hears, so the beats are discovered, not programmed. You can see it on the “Odd machine cycle,” which repeats every 10.5 hours, a beat no calendar would guess.</p>
+  <p>Following the NANOBRAIN plan, the clocks are frozen once they lock on, and only the readout is trained: how much each clock counts. The alarm level is set from week 3, which the rhythm never trained on, so it reflects honest mistakes rather than memorized ones.</p>
+  <p>The limits are real too. The data here is made up to test the method. NANOBRAIN can’t learn activity with no rhythm, and it reports that instead of guessing. It can be fooled by an intruder who follows the normal rhythm exactly, or by one who was already present while it learned. That is why, inside ARACHNODE, it would be one sense among several, next to the Ninth Eye.</p>
+</div>
+<footer>NANOBRAIN Rhythm Learner v0.1. Inspired by Anirban Bandyopadhyay’s book “Nanobrain.” Everything runs in your browser; nothing is sent anywhere.</footer>
+</div>
+<script>
+'use strict';
+/* ===== NANOBRAIN rhythm engine ===== */
+const DT = 0.1, HIST_H = 504, SCALE = 0.01;
+function rng(seed){ let s = seed>>>0; return () => { s = (s + 0x6D2B79F5)>>>0; let t = s; t = Math.imul(t ^ t>>>15, t|1); t ^= t + Math.imul(t ^ t>>>7, t|61); return ((t ^ t>>>14)>>>0) / 4294967296; }; }
+function gauss(r){ let u = 0, v = 0; while(!u) u = r(); while(!v) v = r(); return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v); }
+const bump = (h, c, s) => Math.exp(-Math.pow(((h - c + 36) % 24 - 12)/s, 2));
+const PRESETS = {
+  office:  { name:'Office network', desc:'Busy on weekday afternoons, quiet at night and on weekends.', f:t => { const d = Math.floor(t/24)%7, h = t%24; return 0.15 + 0.8*(d < 5 ? 1 : 0.15)*bump(h, 13, 3.5); } },
+  backup:  { name:'Nightly backup', desc:'Quiet most of the day, with a sharp spike at 2 a.m. every night.', f:t => { const h = t%24; return 0.3 + 0.15*Math.sin(2*Math.PI*(h-8)/24) + 0.6*bump(h, 2, 0.8); } },
+  shift:   { name:'Factory shifts', desc:'A 2-hour burst of work every 8 hours, day and night.', f:t => { const h = t%8; return 0.2 + 0.55/(1 + Math.exp(-6*(Math.min(h, 2.5 - h)))); } },
+  machine: { name:'Odd machine cycle', desc:'A machine that repeats every 10.5 hours. That matches no clock on the wall.', f:t => { const h = (t%10.5)/10.5; return 0.25 + 0.4*Math.exp(-Math.pow((h-0.3)/0.08, 2)) + 0.2*Math.sin(2*Math.PI*h); } },
+  mixed:   { name:'Two rhythms at once', desc:'A daily rise and fall, with an 8-hour shift pattern on top.', f:t => 0.45 + 0.22*Math.sin(2*Math.PI*(t-8)/24) + 0.18*Math.sin(2*Math.PI*t/8) + 0.08*Math.sin(4*Math.PI*t/8) },
+  none:    { name:'No rhythm', desc:'Activity that wanders up and down without ever repeating.', f:null }
+};
+function makeSeries(key, hours, noise, seed){
+  const n = Math.round(hours/DT), y = new Float32Array(n), r = rng(seed), P = PRESETS[key];
+  if (P.f){ for (let i=0;i<n;i++) y[i] = P.f(i*DT) + noise*gauss(r); }
+  else { let a = 0, b = 0; for (let i=0;i<n;i++){ a += (gauss(r)*0.06 - a*0.002); b += (a - b)*0.02; y[i] = 0.45 + clampv(b, -0.35, 0.35) + noise*gauss(r); } }
+  return y;
+}
+function clampv(x, a, b){ return Math.max(a, Math.min(b, x)); }
+
+/* Stage 1: a pool of self-tuning clocks (adaptive-frequency Hopf oscillators, Righetti, Buchli and Ijspeert 2006). */
+class ClockPool {
+  constructor(n, pMin, pMax){
+    this.n = n; this.g = 8; this.eps = 0.9; this.eta = 0.5;
+    this.x = new Float64Array(n).fill(1); this.y = new Float64Array(n); this.w = new Float64Array(n); this.a = new Float64Array(n); this.a0 = 0;
+    for (let i=0;i<n;i++){ const p = pMin*Math.pow(pMax/pMin, i/(n-1)); this.w[i] = 2*Math.PI/(p*SCALE); }
+  }
+  listen(series){ /* one pass over the history */
+    const dt = DT*SCALE, n = this.n, x = this.x, y = this.y, w = this.w, a = this.a, g = this.g, eps = this.eps, eta = this.eta;
+    let err = 0;
+    for (let k=0;k<series.length;k++){
+      let Q = this.a0; for (let i=0;i<n;i++) Q += a[i]*x[i];
+      const F = series[k] - Q; err += F*F;
+      for (let i=0;i<n;i++){
+        const xi = x[i], yi = y[i], r2 = xi*xi + yi*yi, r = Math.sqrt(r2) || 1e-9;
+        x[i] = xi + (g*(1-r2)*xi - w[i]*yi + eps*F)*dt;
+        y[i] = yi + (g*(1-r2)*yi + w[i]*xi)*dt;
+        w[i] += -eps*F*yi/r*dt; a[i] += eta*xi*F*dt;
+      }
+      this.a0 += eta*F*dt;
+    }
+    return Math.sqrt(err/series.length);
+  }
+  periods(){ return Array.from(this.w, (w, i) => ({ p: 2*Math.PI/(Math.abs(w)*SCALE), a: Math.abs(this.a[i]) })); }
+}
+function fundamentals(per){
+  const mx = Math.max(...per.map(o => o.a));
+  const s = per.filter(o => o.a > 0.15*mx && o.a > 0.01 && o.p > 2 && o.p < 400).sort((a, b) => b.p - a.p), F = [];
+  for (const o of s){ if (!F.some(f => { const k = f/o.p; return Math.abs(k - Math.round(k)) < 0.04*Math.round(k); })) F.push(o.p); }
+  return F.slice(0, 3);
+}
+/* Stage 2: freeze the clocks at the beats they found. Fit only the readout: how much each clock and its harmonics count. */
+function solve(A, b){ const n = b.length;
+  for (let i=0;i<n;i++){ let p = i; for (let k=i+1;k<n;k++) if (Math.abs(A[k][i]) > Math.abs(A[p][i])) p = k; [A[i], A[p]] = [A[p], A[i]]; [b[i], b[p]] = [b[p], b[i]];
+    for (let k=i+1;k<n;k++){ const f = A[k][i]/A[i][i]; if (!f) continue; for (let j=i;j<n;j++) A[k][j] -= f*A[i][j]; b[k] -= f*b[i]; } }
+  const x = new Array(n).fill(0); for (let i=n-1;i>=0;i--){ let s = b[i]; for (let j=i+1;j<n;j++) s -= A[i][j]*x[j]; x[i] = s/A[i][i]; } return x; }
+function bankFor(F, minP = 1.5, maxK = 1e9){ const m = new Map(); for (const f of F) for (let k=1;k<=Math.min(maxK, Math.floor(f/minP));k++){ const q = f/k, key = Math.round(q*20); if (!m.has(key)) m.set(key, q); } return [...m.values()]; }
+function fitReadout(series, t0, bank, step = 1){
+  const m = 1 + 2*bank.length, A = Array.from({length:m}, () => new Float64Array(m)), b = new Float64Array(m), f = new Float64Array(m); let cnt = 0;
+  for (let i=0;i<series.length;i+=step){ const t = t0 + i*DT; f[0] = 1; for (let j=0;j<bank.length;j++){ const a = 2*Math.PI*t/bank[j]; f[1+2*j] = Math.cos(a); f[2+2*j] = Math.sin(a); }
+    const yv = series[i]; for (let j=0;j<m;j++){ const fj = f[j]; b[j] += fj*yv; for (let k=j;k<m;k++) A[j][k] += fj*f[k]; } cnt++; }
+  for (let j=0;j<m;j++){ for (let k=0;k<j;k++) A[j][k] = A[k][j]; if (j) A[j][j] += 1e-3*cnt; }
+  const w = solve(A.map(r => Array.from(r)), Array.from(b)); const model = { w, bank };
+  let e = 0; for (let i=0;i<series.length;i+=step){ const d = series[i] - expect(model, t0 + i*DT); e += d*d; } model.rmse = Math.sqrt(e/cnt); return model;
+}
+function expect(model, t){ let q = model.w[0]; for (let j=0;j<model.bank.length;j++){ const a = 2*Math.PI*t/model.bank[j]; q += model.w[1+2*j]*Math.cos(a) + model.w[2+2*j]*Math.sin(a); } return q; }
+function refineBeat(series, f){
+  const pass = (c, span, step) => { let best = c, be = 1e9; for (let x=-span;x<=span+1e-9;x+=step){ const g = c*(1 + x), m = fitReadout(series, 0, bankFor([g], 2, 20), 4); if (m.rmse < be){ be = m.rmse; best = g; } } return best; };
+  return pass(pass(f, 0.05, 0.0025), 0.003, 0.0002);
+}
+function std(a){ let m = 0; for (const v of a) m += v; m /= a.length; let s = 0; for (const v of a) s += (v-m)*(v-m); return { mean:m, sd:Math.sqrt(s/a.length) }; }
+/* Self-check: learn on weeks 1 and 2, then see whether the rhythm predicts week 3, which it has never seen. */
+function buildModel(hist, beats){
+  const cut = Math.round(336/DT), A = hist.subarray(0, cut), B = hist.subarray(cut), stA = std(A);
+  let flat = 0; for (const v of B) flat += (v - stA.mean)**2; flat = Math.sqrt(flat/B.length);
+  const out = { flatErr: flat, valErr: flat, rhythmic: false, beats: [] };
+  if (beats.length){
+    const bank = bankFor(beats, 2), mA = fitReadout(A, 0, bank);
+    let e = 0; for (let i=0;i<B.length;i++){ const d = B[i] - expect(mA, (cut + i)*DT); e += d*d; } e = Math.sqrt(e/B.length);
+    out.valErr = e;
+    if (e < 0.8*flat){ const m = fitReadout(hist, 0, bank); return { ...m, ...out, beats, rhythmic: true, valModel: mA }; }
+  }
+  const st = std(hist); return { w: [st.mean], bank: [], ...out, valModel: { w: [stA.mean], bank: [] } };
+}
+/* Watching: compare what happens with what the rhythm says should happen. */
+const TAU = 1.0;
+/* The alarm level is set from week 3, the week the rhythm was not trained on, so it reflects honest prediction error. */
+function calibrate(model, hist){
+  const al = DT/TAU, cut = Math.round(336/DT); let s = 0, mx = 0, e = null, lo = 1e9, hi = -1e9;
+  for (let i=0;i<hist.length;i++){
+    e = e === null ? hist[i] : e + (hist[i] - e)*al; if (i*DT > 10){ lo = Math.min(lo, e); hi = Math.max(hi, e); }
+    if (i >= cut){ s += (hist[i] - expect(model.valModel, i*DT) - s)*al; if (i - cut > 100) mx = Math.max(mx, Math.abs(s)); }
+  }
+  return { thr: Math.max(1.5*mx, 0.05), lo: lo - 0.03, hi: hi + 0.03 };
+}
+class Watcher {
+  constructor(model, cal, t0){ this.m = model; this.c = cal; this.t = t0; this.s = 0; this.e = null; this.nb = false; this.sb = false; this.nbCount = 0; this.sbCount = 0; }
+  push(v){
+    const al = DT/TAU, ex = expect(this.m, this.t); this.s += (v - ex - this.s)*al; this.e = this.e === null ? v : this.e + (v - this.e)*al;
+    const nb = Math.abs(this.s) > this.c.thr, sb = this.e > this.c.hi || this.e < this.c.lo;
+    const out = { t:this.t, v, ex, score:Math.abs(this.s)/this.c.thr, nb, sb, nbNew: nb && !this.nb, sbNew: sb && !this.sb };
+    if (out.nbNew) this.nbCount++; if (out.sbNew) this.sbCount++; this.nb = nb; this.sb = sb; this.t += DT; return out;
+  }
+}
+const INTRUDERS = {
+  odd:    { name:'Intruder at an odd hour', desc:'Extra activity for 2 hours.', dur:2, apply:(v, lo) => v + 0.45 },
+  stop:   { name:'Activity suddenly stops', desc:'Everything goes quiet for 4 hours.', dur:4, apply:(v, lo) => lo },
+  leak:   { name:'Slow data theft', desc:'A small, steady extra load for 12 hours.', dur:12, apply:(v, lo) => v + 0.12 },
+  burst:  { name:'Short burst', desc:'A big spike lasting 30 minutes.', dur:0.5, apply:(v, lo) => v + 0.9 }
+};
+function proofTest(model, cal, key, noise, seed, trials = 30){
+  const H2 = 336, r = rng(seed + 99), res = {};
+  const lowLevel = cal.lo + 0.03;
+  const clean = makeSeries(key, HIST_H + H2, noise, seed + 7).slice(Math.round(HIST_H/DT));
+  const runOn = (arr, from, to) => { const w = new Watcher(model, cal, HIST_H); let n = false, s = false;
+    for (let i=0;i<arr.length;i++){ const o = w.push(arr[i]); const tt = i*DT; if (tt >= from && tt <= to){ n = n || o.nb; s = s || o.sb; } } return { n, s, w }; };
+  const base = runOn(clean, -1, -1); res.falseAlarms = { nano: base.w.nbCount/2, simple: base.w.sbCount/2 };
+  for (const [k, I] of Object.entries(INTRUDERS)){
+    let n = 0, s = 0;
+    for (let tr=0;tr<trials;tr++){
+      const st = 12 + r()*(H2 - 30), arr = Float32Array.from(clean), a = Math.round(st/DT), b = Math.round((st + I.dur)/DT);
+      for (let i=a;i<b;i++) arr[i] = I.apply(arr[i], lowLevel);
+      const o = runOn(arr, st, st + I.dur + 1.5); if (o.n) n++; if (o.s) s++;
+    }
+    res[k] = { nano: n/trials, simple: s/trials };
+  }
+  return res;
+}
+function learnAll(key, noise, seed, epochs = 200, onEpoch){
+  const hist = makeSeries(key, HIST_H, noise, seed), pool = new ClockPool(36, 3, 250), A = hist.subarray(0, Math.round(336/DT));
+  for (let ep=0;ep<epochs;ep++){ pool.listen(A); if (onEpoch) onEpoch(ep, pool); }
+  let beats = fundamentals(pool.periods()).map(f => refineBeat(A, f));
+  const model = buildModel(hist, beats), cal = calibrate(model, hist);
+  return { hist, pool, model, cal };
+}
+/* ===== end engine ===== */
+/* ===== page ===== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let C = {};
+function readColors(){ const cs = getComputedStyle(document.documentElement); for (const k of ['ink','muted','line','surface','slow','mid','bad','ok','fast']) C[k] = cs.getPropertyValue('--' + k).trim(); }
+readColors();
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readColors(); redrawAll(); }); } catch(e){}
+const reduceMotion = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; } })();
+
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function when(t){ const wk = Math.floor(t/168) + 1, d = Math.floor((t%168)/24), h = t%24, hh = Math.floor(h), mm = Math.floor((h - hh)*60/10)*10;
+  const ap = hh < 12 ? 'a.m.' : 'p.m.', h12 = hh%12 === 0 ? 12 : hh%12; return `Week ${wk}, ${DAYS[d]} ${h12}:${String(mm).padStart(2,'0')} ${ap}`; }
+function beatName(p){
+  const near = (x, y) => Math.abs(x - y) < 0.02*y;
+  if (near(p, 168)) return 'Once a week (' + p.toFixed(1) + ' hours)';
+  if (near(p, 24)) return 'Once a day (' + p.toFixed(1) + ' hours)';
+  if (near(p, 12)) return 'Twice a day (' + p.toFixed(1) + ' hours)';
+  return 'Every ' + p.toFixed(1) + ' hours';
+}
+function canvasSize(cv){ const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1; const w = Math.max(280, Math.round(r.width)), h = Math.round(+cv.dataset.h || 260);
+  cv.width = w*d; cv.height = h*d; cv.style.height = h + 'px'; const g = cv.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); return { g, w, h }; }
+
+/* ---------- state ---------- */
+const S = { key:'office', noise:0.05, seed:42, phase:'pick', hist:null, pool:null, traj:[], model:null, cal:null, future:null, watcher:null, idx:0, trace:[], events:[], playing:false, speed:3, raf:0 };
+
+/* ---------- step 1: pick ---------- */
+function renderPresets(){
+  $('#presets').innerHTML = Object.entries(PRESETS).map(([k, p]) => `<button class="preset${k === S.key ? ' on' : ''}" data-k="${k}" aria-pressed="${k === S.key}"><b>${esc(p.name)}</b><span>${esc(p.desc)}</span></button>`).join('');
+  document.querySelectorAll('.preset').forEach(b => b.addEventListener('click', () => { if (S.phase === 'learning') return; S.key = b.dataset.k; resetAll(); }));
+}
+function resetAll(){
+  cancelAnimationFrame(S.raf); S.playing = false;
+  S.hist = makeSeries(S.key, HIST_H, S.noise, S.seed); S.pool = null; S.traj = []; S.model = null; S.cal = null; S.future = null; S.watcher = null; S.idx = 0; S.trace = []; S.events = [];
+  S.phase = 'pick'; renderPresets(); drawHistory(); drawTuning(); $('#beats').innerHTML = '<p class="empty">Press Listen and learn to start.</p>'; $('#selfcheck').textContent = '';
+  setWatchEnabled(false); $('#eventlog').innerHTML = '<p class="empty">Nothing yet.</p>'; drawStream(); updateLamps(null); $('#proof').innerHTML = '<p class="empty">Learn a rhythm first, then run the proof test.</p>';
+  $('#learn').disabled = false; $('#proofBtn').disabled = true; setStatus('#learnStatus', '');
+}
+$('#noise').addEventListener('input', e => { S.noise = +e.target.value; $('#noiseVal').textContent = S.noise.toFixed(2); });
+$('#noise').addEventListener('change', () => { if (S.phase !== 'learning') resetAll(); });
+$('#newData').addEventListener('click', () => { if (S.phase === 'learning') return; S.seed = Math.floor(Math.random()*1e6); resetAll(); });
+function setStatus(sel, txt, cls){ const el = $(sel); el.textContent = txt; el.className = 'status' + (cls ? ' ' + cls : ''); }
+
+function drawHistory(){
+  const cv = $('#histChart'), { g, w, h } = canvasSize(cv), pad = { l:34, r:8, t:18, b:22 }, H = S.hist;
+  g.clearRect(0, 0, w, h); if (!H) return;
+  const X = t => pad.l + (w - pad.l - pad.r)*t/HIST_H, Y = v => pad.t + (h - pad.t - pad.b)*(1 - (v + 0.1)/1.3);
+  g.font = '12px ' + getComputedStyle(document.body).fontFamily; g.fillStyle = C.muted; g.strokeStyle = C.line; g.lineWidth = 1;
+  for (let wk = 0; wk < 3; wk++){ const x0 = X(wk*168), x1 = X((wk + 1)*168);
+    if (wk === 2){ g.fillStyle = C.line; g.globalAlpha = 0.35; g.fillRect(x0, pad.t, x1 - x0, h - pad.t - pad.b); g.globalAlpha = 1; }
+    g.fillStyle = C.muted; g.fillText(wk === 2 ? 'Week 3: the self-check week' : 'Week ' + (wk + 1) + ': learning', x0 + 6, 12);
+    g.beginPath(); g.moveTo(x0, pad.t); g.lineTo(x0, h - pad.b); g.stroke(); }
+  for (let d = 0; d <= 21; d++){ g.fillStyle = C.muted; if (d < 21) g.fillText(DAYS[d%7][0], X(d*24 + 10), h - 6); }
+  g.strokeStyle = C.ink; g.lineWidth = 1; g.beginPath();
+  for (let i = 0; i < H.length; i += 2){ const x = X(i*DT), y = Y(H[i]); i ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke();
+  if (S.model && S.model.valModel){
+    g.strokeStyle = C.slow; g.lineWidth = 2.2; g.setLineDash([6, 4]); g.beginPath();
+    for (let t = 336; t <= HIST_H; t += 0.2){ const x = X(t), y = Y(expect(S.model.valModel, t)); t === 336 ? g.moveTo(x, y) : g.lineTo(x, y); } g.stroke(); g.setLineDash([]);
+  }
+}
+
+/* ---------- step 2: listen and learn ---------- */
+function drawTuning(){
+  const cv = $('#tuneChart'), { g, w, h } = canvasSize(cv), pad = { l:62, r:12, t:12, b:26 }, E = 200;
+  g.clearRect(0, 0, w, h);
+  const lo = Math.log(2.5), hi = Math.log(320), X = e => pad.l + (w - pad.l - pad.r)*e/E, Y = p => pad.t + (h - pad.t - pad.b)*(1 - (Math.log(clampv(p, 2.5, 320)) - lo)/(hi - lo));
+  g.font = '12px ' + getComputedStyle(document.body).fontFamily;
+  const refs = [[4,'4 h'],[8,'8 h'],[12,'12 h'],[24,'1 day'],[48,'2 days'],[168,'1 week']];
+  for (const [p, lab] of refs){ g.strokeStyle = C.line; g.lineWidth = 1; g.beginPath(); g.moveTo(pad.l, Y(p)); g.lineTo(w - pad.r, Y(p)); g.stroke(); g.fillStyle = C.muted; g.textAlign = 'right'; g.fillText(lab, pad.l - 8, Y(p) + 4); }
+  g.textAlign = 'left'; g.fillStyle = C.muted; g.fillText('Listening passes →', pad.l, h - 8);
+  if (!S.traj.length){ g.fillStyle = C.muted; g.fillText('36 clocks will appear here, each starting at a different speed.', pad.l + 10, pad.t + 20); return; }
+  const n = S.traj[0].length, last = S.traj[S.traj.length - 1], amax = Math.max(...last.map(o => o.a)) || 1;
+  for (let i = 0; i < n; i++){
+    const strong = last[i].a/amax; g.strokeStyle = strong > 0.15 ? C.slow : C.muted; g.globalAlpha = 0.25 + 0.75*Math.min(1, strong*1.4); g.lineWidth = strong > 0.15 ? 2 : 1;
+    g.beginPath(); for (let e = 0; e < S.traj.length; e++){ const x = X(e), y = Y(S.traj[e][i].p); e ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke();
+  }
+  g.globalAlpha = 1;
+  if (S.model && S.model.rhythmic) for (const b of S.model.beats){ g.strokeStyle = C.bad; g.lineWidth = 1.5; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(pad.l, Y(b)); g.lineTo(w - pad.r, Y(b)); g.stroke(); g.setLineDash([]);
+    g.fillStyle = C.bad; g.textAlign = 'right'; g.fillText('found: ' + b.toFixed(1) + ' h', w - pad.r - 4, Y(b) - 6); g.textAlign = 'left'; }
+}
+$('#learn').addEventListener('click', () => {
+  if (S.phase === 'learning') return; const keep = S.hist; resetAll(); S.hist = keep;
+  S.phase = 'learning'; $('#learn').disabled = true; setStatus('#learnStatus', 'Listening to weeks 1 and 2 over and over. Watch the clocks drift and lock on…');
+  const A = S.hist.subarray(0, Math.round(336/DT)); S.pool = new ClockPool(36, 3, 250); let ep = 0;
+  const per = reduceMotion ? 20 : 2;
+  const tick = () => {
+    for (let k = 0; k < per && ep < 200; k++, ep++){ S.pool.listen(A); S.traj.push(S.pool.periods()); }
+    drawTuning();
+    if (ep < 200){ S.raf = requestAnimationFrame(tick); return; }
+    setStatus('#learnStatus', 'Pinning down each beat, then testing itself on week 3…');
+    setTimeout(finishLearning, 60);
+  };
+  S.raf = requestAnimationFrame(tick);
+});
+function finishLearning(){
+  const A = S.hist.subarray(0, Math.round(336/DT));
+  const beats = fundamentals(S.pool.periods()).map(f => refineBeat(A, f));
+  S.model = buildModel(S.hist, beats); S.cal = calibrate(S.model, S.hist); S.phase = 'learned';
+  drawTuning(); drawHistory();
+  const m = S.model, times = (m.flatErr/m.valErr).toFixed(1);
+  if (m.rhythmic){
+    $('#beats').innerHTML = `<h3>Beats it found</h3><ul class="beatlist">${m.beats.map(b => `<li>${esc(beatName(b))}</li>`).join('')}</ul>
+      <p class="small">Plus ${m.bank.length - m.beats.length} faster harmonics of those beats, which give the rhythm its exact shape. In total, ${m.bank.length} clocks now keep time.</p>`;
+    $('#selfcheck').innerHTML = `<b>Self-check passed.</b> It learned from weeks 1 and 2 only, then predicted week 3 (the dashed line above). Its average miss was ${m.valErr.toFixed(3)}, against ${m.flatErr.toFixed(3)} for a flat guess. That is ${times} times better.`;
+    $('#selfcheck').className = 'callout ok';
+    setStatus('#learnStatus', 'Rhythm learned. Go to step 3.', 'ok');
+  } else {
+    $('#beats').innerHTML = `<h3>Beats it found</h3><p>None. The clocks never settled on a beat that could predict week 3.</p>`;
+    $('#selfcheck').innerHTML = `<b>Self-check: no rhythm here.</b> Its best guess missed week 3 by ${m.valErr.toFixed(3)}, barely better than a flat guess (${m.flatErr.toFixed(3)}). So NANOBRAIN says so honestly, instead of inventing a rhythm. This kind of activity needs a different detector, such as the Ninth Eye.`;
+    $('#selfcheck').className = 'callout';
+    setStatus('#learnStatus', 'No rhythm found. You can still watch, but NANOBRAIN will stay quiet.', '');
+  }
+  S.future = makeSeries(S.key, HIST_H + 336, S.noise, S.seed + 7).slice(Math.round(HIST_H/DT));
+  S.watcher = new Watcher(S.model, S.cal, HIST_H); S.idx = 0; S.trace = [];
+  setWatchEnabled(true); $('#proofBtn').disabled = false; $('#learn').disabled = false; drawStream();
+}
+
+/* ---------- step 3: watch the web ---------- */
+function setWatchEnabled(on){ document.querySelectorAll('#play,.intr').forEach(b => b.disabled = !on); $('#play').textContent = 'Start watching'; }
+function renderIntruders(){ $('#intruders').innerHTML = Object.entries(INTRUDERS).map(([k, I]) => `<button class="intr" data-k="${k}" disabled><b>${esc(I.name)}</b><span>${esc(I.desc)}</span></button>`).join('');
+  document.querySelectorAll('.intr').forEach(b => b.addEventListener('click', () => addIntruder(b.dataset.k))); }
+function addIntruder(k){
+  if (!S.future || S.idx >= S.future.length - 10) return;
+  const I = INTRUDERS[k], a = S.idx + 1, b = Math.min(S.future.length, a + Math.round(I.dur/DT)), low = S.cal.lo + 0.03;
+  for (let i = a; i < b; i++) S.future[i] = I.apply(S.future[i], low);
+  S.events.push({ k, a, b, t: HIST_H + a*DT, nano:null, simple:null, done:false }); renderEvents();
+  if (!S.playing) togglePlay();
+}
+function renderEvents(){
+  if (!S.events.length){ $('#eventlog').innerHTML = '<p class="empty">Nothing yet.</p>'; return; }
+  const v = (x, done) => x !== null ? `<span class="pill ok">caught after ${Math.round(x*60)} min</span>` : (done ? '<span class="pill bad">missed</span>' : '<span class="pill mid">watching…</span>');
+  $('#eventlog').innerHTML = '<table class="t"><thead><tr><th>When</th><th>What you added</th><th>NANOBRAIN</th><th>Simple alarm</th></tr></thead><tbody>' +
+    S.events.slice().reverse().map(e => `<tr><td>${esc(when(e.t))}</td><td>${esc(INTRUDERS[e.k].name)}</td><td>${v(e.nano, e.done)}</td><td>${v(e.simple, e.done)}</td></tr>`).join('') + '</tbody></table>';
+}
+function updateLamps(o){
+  const set = (id, on, txt) => { const el = $(id); el.classList.toggle('on', !!on); el.querySelector('.lt').textContent = txt; };
+  if (!o){ set('#lampN', false, 'Waiting'); set('#lampS', false, 'Waiting'); $('#clock').textContent = '–'; $('#cntN').textContent = '0'; $('#cntS').textContent = '0'; return; }
+  set('#lampN', o.nb, o.nb ? 'Out of rhythm!' : (S.model.rhythmic ? 'In rhythm' : 'No rhythm to follow'));
+  set('#lampS', o.sb, o.sb ? 'Too high or too low!' : 'Within normal range');
+  $('#clock').textContent = when(o.t); $('#cntN').textContent = S.watcher.nbCount; $('#cntS').textContent = S.watcher.sbCount;
+}
+function streamStep(){
+  for (let k = 0; k < S.speed && S.idx < S.future.length; k++){
+    const o = S.watcher.push(S.future[S.idx]); S.trace.push(o);
+    for (const e of S.events){ if (e.done) continue; const lag = (S.idx - e.a)*DT;
+      if (S.idx >= e.a){ if (o.nb && e.nano === null) e.nano = lag; if (o.sb && e.simple === null) e.simple = lag; }
+      if (S.idx > e.b + Math.round(1.5/DT)){ e.done = true; } }
+    S.idx++;
+    updateLamps(o);
+  }
+  renderEvents(); drawStream();
+  if (S.idx >= S.future.length){ S.playing = false; $('#play').textContent = 'Finished two weeks'; $('#play').disabled = true; return; }
+  if (S.playing) S.raf = requestAnimationFrame(streamStep);
+}
+function togglePlay(){ if (!S.future) return; S.playing = !S.playing; $('#play').textContent = S.playing ? 'Pause' : 'Keep watching'; if (S.playing){ cancelAnimationFrame(S.raf); S.raf = requestAnimationFrame(streamStep); } }
+$('#play').addEventListener('click', togglePlay);
+$('#speed').addEventListener('change', e => { S.speed = +e.target.value; });
+function drawStream(){
+  const cv = $('#streamChart'), { g, w, h } = canvasSize(cv), pad = { l:12, r:12, t:14, b:22 }, WIN = 72;
+  g.clearRect(0, 0, w, h); g.font = '12px ' + getComputedStyle(document.body).fontFamily;
+  if (!S.model){ g.fillStyle = C.muted; g.fillText('Learn a rhythm in step 2 first.', 16, 30); return; }
+  const tEnd = Math.max(HIST_H + WIN, S.watcher.t), t0 = tEnd - WIN;
+  const X = t => pad.l + (w - pad.l - pad.r)*(t - t0)/WIN, Y = v => pad.t + (h - pad.t - pad.b)*(1 - (v + 0.1)/1.5);
+  for (let d = Math.ceil(t0/24)*24; d <= tEnd; d += 24){ g.strokeStyle = C.line; g.lineWidth = 1; g.beginPath(); g.moveTo(X(d), pad.t); g.lineTo(X(d), h - pad.b); g.stroke(); g.fillStyle = C.muted; g.fillText(DAYS[Math.floor((d%168)/24)] + ' midnight', X(d) + 4, h - 6); }
+  for (const e of S.events){ const a = HIST_H + e.a*DT, b = HIST_H + e.b*DT; if (b < t0) continue; g.fillStyle = C.mid; g.globalAlpha = 0.16; g.fillRect(X(Math.max(a, t0)), pad.t, X(b) - X(Math.max(a, t0)), h - pad.t - pad.b); g.globalAlpha = 1; }
+  const vis = S.trace.filter(o => o.t >= t0);
+  g.fillStyle = C.bad; g.globalAlpha = 0.22; for (const o of vis) if (o.nb) g.fillRect(X(o.t), pad.t, Math.max(1, X(o.t + DT) - X(o.t)) + 0.5, 6); g.globalAlpha = 1;
+  g.strokeStyle = C.slow; g.lineWidth = 2.4; g.beginPath(); let first = true;
+  for (let t = t0; t <= tEnd + 6; t += 0.2){ if (t < HIST_H) continue; const y = Y(expect(S.model, t)); first ? g.moveTo(X(t), y) : g.lineTo(X(t), y); first = false; } g.stroke();
+  g.strokeStyle = C.ink; g.lineWidth = 1.2; g.beginPath(); vis.forEach((o, i) => i ? g.lineTo(X(o.t), Y(o.v)) : g.moveTo(X(o.t), Y(o.v))); g.stroke();
+  if (vis.length){ const o = vis[vis.length - 1]; g.fillStyle = o.nb ? C.bad : C.ink; g.beginPath(); g.arc(X(o.t), Y(o.v), 4, 0, 2*Math.PI); g.fill(); }
+}
+
+/* ---------- step 4: proof test ---------- */
+$('#proofBtn').addEventListener('click', () => {
+  if (!S.model) return; $('#proofBtn').disabled = true; $('#proof').innerHTML = '<p class="empty">Running 120 hidden intruders and two clean weeks…</p>';
+  setTimeout(() => {
+    const R = proofTest(S.model, S.cal, S.key, S.noise, S.seed, 30), p = x => Math.round(x*100) + '%';
+    const row = (k) => `<tr><td>${esc(INTRUDERS[k].name)}</td><td class="num"><b>${p(R[k].nano)}</b></td><td class="num">${p(R[k].simple)}</td></tr>`;
+    $('#proof').innerHTML = `<table class="t"><thead><tr><th>30 intruders of each kind, at random times</th><th>NANOBRAIN caught</th><th>Simple alarm caught</th></tr></thead><tbody>
+      ${Object.keys(INTRUDERS).map(row).join('')}
+      <tr class="fa"><td>False alarms on two clean weeks (per week)</td><td class="num"><b>${R.falseAlarms.nano}</b></td><td class="num">${R.falseAlarms.simple}</td></tr></tbody></table>
+      <p class="small">Rhythm: ${esc(PRESETS[S.key].name)}. Noise ${S.noise.toFixed(2)}. Made-up data, built to test the method. Some intruders can't be caught by anyone: if activity “stops” at a time when it was already quiet, nothing changes.</p>`;
+    $('#proofBtn').disabled = false;
+  }, 50);
+});
+
+/* ---------- start ---------- */
+function redrawAll(){ drawHistory(); drawTuning(); drawStream(); }
+let rt = 0; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(redrawAll, 120); });
+renderIntruders(); resetAll();
+</script>
+</body>
+</html>
